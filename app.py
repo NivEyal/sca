@@ -111,7 +111,9 @@ with col1:
     st.markdown("### 🔼 Top Gainers")
     gainers = fetch_market_movers("stock_market/gainers")
     if not gainers.empty:
-        st.dataframe(gainers, use_container_width=True)
+        html = format_market_movers_section("🔺 Top Gainers", gainers_df)
+        st.markdown(html, unsafe_allow_html=True)
+
     else:
         st.warning("No data for gainers.")
 
