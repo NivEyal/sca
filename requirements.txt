@@ -1,28 +1,24 @@
-# Streamlit + Data
+# Core libraries
 streamlit==1.35.0
-pandas==2.1.4
-numpy==1.24.4
+pandas==2.2.2
+numpy==1.26.4
 pandas_ta==0.3.14b0
-
-# Core utilities
 setuptools>=65.0.0
-requests>=2.25.0
-environs>=9.0.0
-structlog>=21.0.0
-redis>=5.0.0
 
-# Plotting
-plotly>=5.0.0
-
-# Alpaca
+# Alpaca APIs
 alpaca_trade_api==2.3.0
 alpaca-py==0.10.0
 
-# Data APIs
+# Financial APIs
 yfinance>=0.2.0
 finnhub-python==2.4.12
 tradingview-ta==0.9.3
 
-# Async / Validation
+# Utilities
 websockets>=10.0
 pydantic==2.6.4
+environs>=9.0.0
+structlog>=21.0.0
+redis>=5.0.0
+plotly>=5.0.0
+requests>=2.25.0
