@@ -1,7 +1,7 @@
-streamlit==1.35.0
-pandas==2.2.2
-numpy==1.24.4
-pandas_ta==0.3.14b0
+streamlit
+pandas
+numpy
+pandas_ta
 setuptools
 alpaca_trade_api
 alpaca-py>=0.10.0
