@@ -1,3 +1,4 @@
+pkg_resources
 pandas_ta
 alpaca_trade_api
 alpaca-py>=0.10.0
