@@ -1,24 +1,24 @@
-# Core libraries
+# Streamlit
 streamlit==1.35.0
+
+# Data Processing
 pandas==2.2.2
 numpy==1.26.4
 pandas_ta==0.3.14b0
-setuptools>=65.0.0
 
-# Alpaca APIs
+# API Tools
 alpaca_trade_api==2.3.0
 alpaca-py==0.10.0
-
-# Financial APIs
 yfinance>=0.2.0
 finnhub-python==2.4.12
 tradingview-ta==0.9.3
 
-# Utilities
+# Core Utils
+requests>=2.25.0
+setuptools>=65.0.0
 websockets>=10.0
-pydantic==1.10.12  # ✅ FIXED: Compatible with alpaca-py
+pydantic==1.10.12       # 🔧 FIX: compatible with alpaca-py
 environs>=9.0.0
 structlog>=21.0.0
 redis>=5.0.0
 plotly>=5.0.0
-requests>=2.25.0
