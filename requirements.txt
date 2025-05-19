@@ -1,18 +1,28 @@
+# Streamlit + Data
 streamlit==1.35.0
-pandas
+pandas==2.1.4
 numpy==1.24.4
 pandas_ta==0.3.14b0
-setuptools
-alpaca_trade_api
-alpaca-py>=0.10.0
-yfinance>=0.2.0
-websockets>=10.0
-pydantic>=2.0.0
+
+# Core utilities
+setuptools>=65.0.0
+requests>=2.25.0
 environs>=9.0.0
 structlog>=21.0.0
 redis>=5.0.0
+
+# Plotting
 plotly>=5.0.0
-requests>=2.25.0
-alpaca-py
-finnhub-python
-tradingview-ta
+
+# Alpaca
+alpaca_trade_api==2.3.0
+alpaca-py==0.10.0
+
+# Data APIs
+yfinance>=0.2.0
+finnhub-python==2.4.12
+tradingview-ta==0.9.3
+
+# Async / Validation
+websockets>=10.0
+pydantic==2.6.4
