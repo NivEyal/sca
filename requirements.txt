@@ -16,7 +16,7 @@ tradingview-ta==0.9.3
 
 # Utilities
 websockets>=10.0
-pydantic==2.6.4
+pydantic==1.10.12  # ✅ FIXED: Compatible with alpaca-py
 environs>=9.0.0
 structlog>=21.0.0
 redis>=5.0.0
