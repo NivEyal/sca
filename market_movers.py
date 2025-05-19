@@ -24,11 +24,11 @@ def fetch_market_movers(endpoint: str, limit: int = 10) -> pd.DataFrame:
         df["% שינוי יומי"] = df["changesPercentage"].apply(lambda x: float(str(x).replace('%', '')) if pd.notnull(x) else 0.0)
 
     rename_map = {
-        "symbol": "סימבול",
-        "companyName": "חברה",
-        "price": "מחיר אחרון",
-        "changes": "שינוי $",
-        "volume": "נפח מסחר"
+        "symbol": "symbol",
+        "companyName": "companyName",
+        "price": "price",
+        "changes": "change $",
+        "volume": "volume"
     }
     df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns}, inplace=True)
 
