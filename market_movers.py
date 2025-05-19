@@ -1,3 +1,5 @@
+
+import streamlit as st
 import requests
 import pandas as pd
 
@@ -36,10 +38,9 @@ def fetch_market_movers(endpoint: str, limit: int = 10) -> pd.DataFrame:
 
     return df.head(limit)
 
-
 def format_market_movers_section(title, df):
     if df.empty:
-        return f"### {title}\nלא נמצאו נתונים."
+        return f"### {title}\nNo data found."
 
     def get_color_style(pct):
         try:
@@ -64,7 +65,7 @@ def format_market_movers_section(title, df):
         df_display["change $"] = df_display.apply(format_change_with_pct, axis=1)
         df_display.drop(columns=["% שינוי יומי"], inplace=True)
 
-    # בניית טבלת HTML עם עיצוב לשורות
+    # HTML table rendering
     table_rows = []
     headers = ''.join([f'<th>{col}</th>' for col in df_display.columns if col != "__row_color__"])
 
