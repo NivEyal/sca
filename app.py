@@ -105,7 +105,7 @@ else:
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(df_tv.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-st.subheader("🔼 Top Gainers / 🔽 Top Losers")
+st.markdown(format_market_movers_section("📈 Top Gainers", gainers_df), unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 with col1:
