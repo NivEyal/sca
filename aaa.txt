@@ -1,0 +1,70 @@
+🧠 Functional Flow
+1. app.py (UI + Orchestration)
+Shows default top 10 volume tickers (from config.py)
+
+Allows user to upload/upload list of tickers
+
+Displays strategy category dropdown, allows multi-select
+
+When "Scan" is pressed:
+
+Loads recent price data from Alpaca for selected tickers
+
+Runs selected strategies
+
+Displays:
+
+📈 Mini price chart (sparkline)
+
+✅ Signals from strategies (BUY / SELL / NONE)
+
+📊 Volume / Price info
+
+2. config.py
+python
+Copy
+Edit
+TOP_10_VOLUME = ["LGMK", "GNLN", "NVVE", "TSLL", "ITP", "SHPH", "OPEN", "NXTT", "LCID", "QBTS"]
+
+STRATEGY_CATEGORIES = {
+    "Pattern Recognition": ["strategy_fractal_breakout_rsi", "strategy_ross_hook_momentum", ...],
+    "Momentum": [...],
+    "Mean Reversion": [...],
+    ...
+}
+3. alpaca_data.py
+Fetches intraday price data from Alpaca using:
+
+
+WebSocket for live price updates 
+Cleans and returns data as pandas.DataFrame per ticker
+
+4. strategy.py
+Dynamically imports strategy functions
+
+Calls each strategy on the relevant df
+
+Returns the signal (BUY / SELL / NONE)
+
+5. strategy_functions.py
+Holds all ~50 strategy functions
+
+Each function receives a DataFrame and returns a signal string
+
+🎨 UI Preview (Streamlit)
+Sidebar:
+
+📌 Strategy category → multiselect
+
+🧾 Uploaded tickers (or use default)
+
+🎯 Scan button
+
+Main panel:
+
+🏆 Results table: Symbol | Price | Volume | Signal
+
+📈 Sparkline chart per symbol
+
+🔁 Option to refresh
+
