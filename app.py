@@ -24,7 +24,6 @@ from top_volume import get_top_volume_tickers
 from market_movers import fetch_market_movers
 from strategy import run_strategies
 from alpaca_connector import get_latest_price_and_change
-import backtrader as bt
 from backtest import run_backtest  # New import
 from datetime import datetime, timedelta
 import streamlit.components.v1 as components
@@ -505,88 +504,7 @@ st.sidebar.markdown("#### 2. Select Tickers")
 st.sidebar.markdown("---")
 st.sidebar.markdown("#### 3. Backtest Strategies")
 
-# Backtest inputs
-backtest_ticker = st.sidebar.text_input(
-    "Backtest Ticker",
-    value="AAPL",
-    placeholder="Enter one ticker (e.g., AAPL)",
-    key="backtest_ticker"
-)
-backtest_strategy = st.sidebar.selectbox(
-    "Select Strategy for Backtest",
-    options=ALL_UNIQUE_STRATEGY_NAMES,
-    index=ALL_UNIQUE_STRATEGY_NAMES.index("Momentum Trading") if "Momentum Trading" in ALL_UNIQUE_STRATEGY_NAMES else 0,
-    key="backtest_strategy"
-)
-backtest_timeframe = st.sidebar.selectbox(
-    "Backtest Timeframe",
-    options=["1Min", "5Min", "15Min", "1H", "1D"],
-    index=1,  # Default to 5Min
-    key="backtest_timeframe"
-)
-backtest_start_date = st.sidebar.date_input(
-    "Start Date",
-    value=datetime.now().date() - timedelta(days=365),
-    key="backtest_start_date"
-)
-backtest_end_date = st.sidebar.date_input(
-    "End Date",
-    value=datetime.now().date(),
-    key="backtest_end_date"
-)
-backtest_initial_cash = st.sidebar.number_input(
-    "Initial Capital ($)",
-    min_value=1000.0,
-    max_value=1000000.0,
-    value=10000.0,
-    step=1000.0,
-    key="backtest_initial_cash"
-)
-backtest_stake = st.sidebar.number_input(
-    "Shares per Trade",
-    min_value=1,
-    max_value=1000,
-    value=100,
-    step=10,
-    key="backtest_stake"
-)
 
-backtest_button = st.sidebar.button(
-    "📊 Run Backtest",
-    disabled=not backtest_ticker or not backtest_strategy,
-    key="backtest_button",
-    use_container_width=True
-)
-if backtest_button:
-    try:
-        st.markdown("---")
-        st.subheader(f"📈 Backtest Results for {backtest_ticker.upper()} ({backtest_strategy})")
-
-        with st.spinner("Running backtest..."):
-            bt_result = run_backtest(
-                symbol=backtest_ticker,
-                strategy_name=backtest_strategy,
-                timeframe=backtest_timeframe,
-                start_date=backtest_start_date,
-                end_date=backtest_end_date,
-                initial_cash=backtest_initial_cash,
-                stake_per_trade=backtest_stake,
-                alpaca_client=alpaca  # אם אתה משתמש בנתוני Alpaca בתוך הבקטסט
-            )
-        st.metric("Final Portfolio Value", f"${bt_result.get('final_value', 0):,.2f}")
-        st.line_chart(bt_result.get("equity_curve"))
-
-        # הצגת התוצאה הבסיסית – לדוגמה גרף Equity Curve
-        if isinstance(bt_result, dict):
-            st.metric("Final Portfolio Value", f"${bt_result.get('final_value', 'N/A')}")
-            st.line_chart(bt_result.get("equity_curve"))  # assuming it's a pandas Series
-        else:
-            st.success("✅ Backtest completed!")
-            st.write(bt_result)  # במקרה שתחזיר object אחר
-
-    except Exception as e:
-        st.error(f"❌ Backtest failed: {e}")
-        streamlit_logger.exception("Backtest failed.")
 
 if 'fmp_tickers' not in st.session_state: st.session_state.fmp_tickers = []
 if 'fmp_last_refresh' not in st.session_state: st.session_state.fmp_last_refresh = None
