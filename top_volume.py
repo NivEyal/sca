@@ -3,7 +3,7 @@ import streamlit as st
 @st.cache_data(ttl=3600)
 def get_top_volume_tickers(limit=10):
     url = "https://financialmodelingprep.com/api/v3/stock_market/actives"
-    params = {"apikey": "LQOCJ3SPdBrntavdH3mNZClLTiOqUwWc"}  # Replace with your real key
+    params = {"apikey": "anc5nLqF1PuZUQGhxDHpgXuU0Yp9Cj0V"}  # Replace with your real key
 
     try:
         response = requests.get(url, params=params, timeout=10)
