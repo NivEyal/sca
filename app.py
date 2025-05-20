@@ -24,7 +24,6 @@ from top_volume import get_top_volume_tickers
 from market_movers import fetch_market_movers
 from strategy import run_strategies
 from alpaca_connector import get_latest_price_and_change
-from backtest import run_backtest  # New import
 from datetime import datetime, timedelta
 import streamlit.components.v1 as components
 
