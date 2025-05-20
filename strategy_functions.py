@@ -1,8 +1,228 @@
+
 # strategy_functions.py
+# Add these new helper functions and strategies at the end of the existing file
+
 import pandas as pd
 import pandas_ta as ta
 import numpy as np
 
+# --- Existing Helper Functions (unchanged) ---
+# ... (keep all existing helper functions like crossed_above_level, detect_divergence, etc.)
+
+# --- New Helper Functions ---
+
+def detect_volume_increase(df, lookback=5, multiplier=1.5):
+    """Detects if current volume is significantly higher than the average of the lookback period."""
+    if len(df) < lookback + 1 or df['volume'].isnull().all():
+        return pd.Series([False] * len(df), index=df.index)
+    vol_avg = df['volume'].rolling(window=lookback).mean()
+    return (df['volume'] > multiplier * vol_avg).fillna(False)
+
+def detect_gap_up(df, gap_threshold=0.02):
+    """Detects if the current open is significantly higher than the previous close."""
+    if len(df) < 2:
+        return pd.Series([False] * len(df), index=df.index)
+    prev_close = df['close'].shift(1)
+    current_open = df['open']
+    gap_pct = (current_open - prev_close) / prev_close
+    return (gap_pct > gap_threshold).fillna(False)
+
+def detect_opening_range(df, range_minutes=15, timeframe='1min'):
+    """
+    Calculates the high-low range for the first `range_minutes` of the trading day.
+    Returns a DataFrame with 'OR_High' and 'OR_Low' columns aligned to the input index.
+    Assumes df index is datetime and data is intraday (e.g., 1min bars).
+    """
+    df_ = df.copy()
+    if not isinstance(df_.index, pd.DatetimeIndex):
+        return pd.Series([np.nan] * len(df_), index=df_.index), pd.Series([np.nan] * len(df_), index=df_.index)
+    
+    # Group by date to identify the first `range_minutes` of each day
+    df_['date'] = df_.index.date
+    df_['time'] = df_.index.time
+    # Assume market opens at 9:30 AM
+    market_open = pd.Timestamp('09:30:00').time()
+    range_end = (pd.Timestamp('09:30:00') + pd.Timedelta(minutes=range_minutes)).time()
+    
+    # Filter bars within the opening range
+    range_bars = df_[(df_['time'] >= market_open) & (df_['time'] <= range_end)]
+    
+    # Calculate high and low for each day's opening range
+    or_high = range_bars.groupby('date')['high'].max()
+    or_low = range_bars.groupby('date')['low'].min()
+    
+    # Map back to the original index
+    df_['OR_High'] = df_['date'].map(or_high).reindex(df_.index)
+    df_['OR_Low'] = df_['date'].map(or_low).reindex(df_.index)
+    
+    return df_['OR_High'].fillna(method='ffill'), df_['OR_Low'].fillna(method='ffill')
+
+# --- New SELL Strategies ---
+
+def strategy_bearish_rsi_divergence(df, rsi_period=14, div_lookback=14):
+    df_ = df.copy()
+    base_name = "BearishRSIDivergence"
+    min_data_needed = rsi_period + div_lookback + 1
+    if len(df_) < min_data_needed:
+        return _add_empty_signals(df_, base_name, buy=False, sell=True)
+    
+    rsi_col = f"RSI_{rsi_period}"
+    df_[rsi_col] = ta.rsi(df_["close"], length=rsi_period)
+    
+    if df_[rsi_col].isnull().all():
+        return _add_empty_signals(df_, base_name, buy=False, sell=True)
+    
+    bear_div = detect_divergence(df_["close"], df_[rsi_col], lookback=div_lookback, type='bearish')
+    entry_cond = bear_div
+    
+    df_[f"{base_name}_Entry_Sell"] = entry_cond
+    df_[f"{base_name}_Exit_Sell"] = crossed_above_level(df_[rsi_col], 50)
+    return df_
+
+def strategy_macd_bearish_cross(df, fast=12, slow=26, signal=9, volume_multiplier=1.2):
+    df_ = df.copy()
+    base_name = "MACDBearishCross"
+    min_data_needed = slow + signal + 1
+    if len(df_) < min_data_needed:
+        return _add_empty_signals(df_, base_name, buy=False, sell=True)
+    
+    macd_data = ta.macd(df_["close"], fast=fast, slow=slow, signal=signal)
+    if macd_data is None or macd_data.empty:
+        return _add_empty_signals(df_, base_name, buy=False, sell=True)
+    
+    df_["MACD_Line"] = macd_data[f"MACD_{fast}_{slow}_{signal}"]
+    df_["MACD_Signal_Line"] = macd_data[f"MACDs_{fast}_{slow}_{signal}"]
+    df_["Volume_Avg"] = df_["volume"].rolling(window=10).mean()
+    
+    if df_["MACD_Line"].isnull().all() or df_["MACD_Signal_Line"].isnull().all():
+        return _add_empty_signals(df_, base_name, buy=False, sell=True)
+    
+    entry_cond1 = crossed_below_series(df_["MACD_Line"], df_["MACD_Signal_Line"])
+    entry_cond2 = df_["volume"] > volume_multiplier * df_["Volume_Avg"]
+    
+    df_[f"{base_name}_Entry_Sell"] = entry_cond1 & entry_cond2
+    df_[f"{base_name}_Exit_Sell"] = crossed_above_series(df_["MACD_Line"], df_["MACD_Signal_Line"])
+    return df_
+
+def strategy_vwap_breakdown_volume(df, rsi_period=14, volume_multiplier=1.5):
+    df_ = df.copy()
+    base_name = "VWAPBreakdownVolume"
+    min_data_needed = rsi_period + 1
+    if len(df_) < min_data_needed:
+        return _add_empty_signals(df_, base_name, buy=False, sell=True)
+    
+    vwap_data = ta.vwap(df_["high"], df_["low"], df_["close"], df_["volume"])
+    df_[f"RSI_{rsi_period}"] = ta.rsi(df_["close"], length=rsi_period)
+    if vwap_data is None:
+        return _add_empty_signals(df_, base_name, buy=False, sell=True)
+    
+    df_["VWAP"] = vwap_data
+    df_["Volume_Avg"] = df_["volume"].rolling(window=10).mean()
+    
+    entry_cond1 = crossed_below_series(df_["close"], df_["VWAP"])
+    entry_cond2 = detect_volume_increase(df_, lookback=5, multiplier=volume_multiplier)
+    entry_cond3 = df_[f"RSI_{rsi_period}"] > 50  # Ensure not oversold
+    
+    df_[f"{base_name}_Entry_Sell"] = entry_cond1 & entry_cond2 & entry_cond3
+    df_[f"{base_name}_Exit_Sell"] = crossed_above_series(df_["close"], df_["VWAP"])
+    return df_
+
+def strategy_supertrend_flip(df, atr_length=10, factor=3.0):
+    df_ = df.copy()
+    base_name = "SuperTrendFlip"
+    min_data_needed = atr_length + 1
+    if len(df_) < min_data_needed:
+        return _add_empty_signals(df_, base_name, buy=True, sell=True)
+    
+    supertrend_data = ta.supertrend(df_["high"], df_["low"], df_["close"], length=atr_length, multiplier=factor)
+    if supertrend_data is None:
+        return _add_empty_signals(df_, base_name, buy=True, sell=True)
+    
+    df_["SuperTrend"] = supertrend_data[f"SUPERT_{atr_length}_{factor}"]
+    df_["SuperTrend_Direction"] = supertrend_data[f"SUPERTd_{atr_length}_{factor}"]
+    
+    # Bullish (buy) when direction flips to +1
+    entry_cond_buy = df_["SuperTrend_Direction"] == 1
+    # Bearish (sell) when direction flips to -1
+    entry_cond_sell = df_["SuperTrend_Direction"] == -1
+    
+    df_[f"{base_name}_Entry_Buy"] = entry_cond_buy & (df_["SuperTrend_Direction"].shift(1) != 1)
+    df_[f"{base_name}_Entry_Sell"] = entry_cond_sell & (df_["SuperTrend_Direction"].shift(1) != -1)
+    df_[f"{base_name}_Exit_Buy"] = df_["SuperTrend_Direction"] == -1
+    df_[f"{base_name}_Exit_Sell"] = df_["SuperTrend_Direction"] == 1
+    return df_
+
+# --- New Day Trading Strategies ---
+
+def strategy_opening_range_breakout(df, range_minutes=15, volume_multiplier=1.5):
+    df_ = df.copy()
+    base_name = "OpeningRangeBreakout"
+    min_data_needed = range_minutes + 1
+    if len(df_) < min_data_needed or not isinstance(df_.index, pd.DatetimeIndex):
+        return _add_empty_signals(df_, base_name, buy=True, sell=True)
+    
+    # Calculate opening range
+    df_["OR_High"], df_["OR_Low"] = detect_opening_range(df_, range_minutes=range_minutes)
+    df_["Volume_Avg"] = df_["volume"].rolling(window=10).mean()
+    
+    if df_["OR_High"].isnull().all() or df_["OR_Low"].isnull().all():
+        return _add_empty_signals(df_, base_name, buy=True, sell=True)
+    
+    entry_cond_buy = crossed_above_series(df_["close"], df_["OR_High"])
+    entry_cond_sell = crossed_below_series(df_["close"], df_["OR_Low"])
+    volume_cond = df_["volume"] > volume_multiplier * df_["Volume_Avg"]
+    
+    df_[f"{base_name}_Entry_Buy"] = entry_cond_buy & volume_cond
+    df_[f"{base_name}_Entry_Sell"] = entry_cond_sell & volume_cond
+    df_[f"{base_name}_Exit_Buy"] = crossed_below_series(df_["close"], df_["OR_Low"])
+    df_[f"{base_name}_Exit_Sell"] = crossed_above_series(df_["close"], df_["OR_High"])
+    return df_
+
+def strategy_gap_and_go(df, gap_threshold=0.02, rsi_period=14, volume_multiplier=1.5):
+    df_ = df.copy()
+    base_name = "GapAndGo"
+    min_data_needed = rsi_period + 2
+    if len(df_) < min_data_needed:
+        return _add_empty_signals(df_, base_name, buy=True, sell=False)
+    
+    df_[f"RSI_{rsi_period}"] = ta.rsi(df_["close"], length=rsi_period)
+    df_["Volume_Avg"] = df_["volume"].rolling(window=10).mean()
+    
+    entry_cond1 = detect_gap_up(df_, gap_threshold=gap_threshold)
+    entry_cond2 = df_["close"] > df_["open"]  # Confirm bullish candle
+    entry_cond3 = df_["volume"] > volume_multiplier * df_["Volume_Avg"]
+    entry_cond4 = df_[f"RSI_{rsi_period}"] > 50
+    
+    df_[f"{base_name}_Entry_Buy"] = entry_cond1 & entry_cond2 & entry_cond3 & entry_cond4
+    df_[f"{base_name}_Exit_Buy"] = crossed_below_level(df_[f"RSI_{rsi_period}"], 50)
+    return df_
+
+def strategy_liquidity_sweep_reversal(df, lookback=20, rsi_period=14):
+    df_ = df.copy()
+    base_name = "LiquiditySweepReversal"
+    min_data_needed = lookback + rsi_period + 1
+    if len(df_) < min_data_needed:
+        return _add_empty_signals(df_, base_name, buy=True, sell=True)
+    
+    df_["Recent_High"] = df_["high"].rolling(window=lookback).max().shift(1)
+    df_["Recent_Low"] = df_["low"].rolling(window=lookback).min().shift(1)
+    df_[f"RSI_{rsi_period}"] = ta.rsi(df_["close"], length=rsi_period)
+    
+    # False breakout above high followed by reversal
+    breakout_high = crossed_above_series(df_["high"], df_["Recent_High"])
+    reversal_low = df_["close"] < df_["Recent_High"]
+    buy_cond = breakout_high.shift(1) & reversal_low & (df_[f"RSI_{rsi_period}"] < 50)
+    
+    # False breakout below low followed by reversal
+    breakout_low = crossed_below_series(df_["low"], df_["Recent_Low"])
+    reversal_high = df_["close"] > df_["Recent_Low"]
+    sell_cond = breakout_low.shift(1) & reversal_high & (df_[f"RSI_{rsi_period}"] > 50)
+    
+    df_[f"{base_name}_Entry_Buy"] = buy_cond
+    df_[f"{base_name}_Entry_Sell"] = sell_cond
+    df_[f"{base_name}_Exit_Buy"] = crossed_above_series(df_["close"], df_["Recent_High"])
+    df_[f"{base_name}_Exit_Sell"] = crossed_below_series(df_["close"], df_["Recent_Low"])
+    return df_
 # --- Helper Functions (Consolidated Here) ---
 def crossed_above_level(series, level):
     if len(series) < 2 or series.isnull().all():
@@ -3162,6 +3382,13 @@ def strategy_hammer_volume(df, vol_ma_period=20, vol_factor=1.5):
 
 # Dictionary to hold all strategy functions
 ALL_STRATEGIES = {
+    "Bearish RSI Divergence": strategy_bearish_rsi_divergence,
+    "MACD Bearish Cross": strategy_macd_bearish_cross,
+    "VWAP Breakdown Volume": strategy_vwap_breakdown_volume,
+    "SuperTrend Flip": strategy_supertrend_flip,
+    "Opening Range Breakout": strategy_opening_range_breakout,
+    "Gap and Go": strategy_gap_and_go,
+    "Liquidity Sweep Reversal": strategy_liquidity_sweep_reversal,
     "Momentum Trading": strategy_momentum,
     "Scalping (Bollinger Bands)": strategy_scalping,
     "Breakout Trading": strategy_breakout,
