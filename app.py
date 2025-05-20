@@ -24,6 +24,29 @@ from top_volume import get_top_volume_tickers
 from market_movers import fetch_market_movers
 from strategy import run_strategies
 from alpaca_connector import get_latest_price_and_change
+import backtrader as bt
+from backtest import run_backtest  # New import
+from datetime import datetime, timedelta
+import streamlit.components.v1 as components
+
+components.html("""
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const textarea = parent.document.querySelector('textarea[data-testid="stTextArea"]');
+  const scanButton = parent.document.querySelector('button[aria-label="🚀 Scan Selected Strategies"]');
+
+  if (textarea && scanButton) {
+    textarea.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();  // כדי שלא ירד שורה
+        scanButton.click();
+      }
+    });
+  }
+});
+</script>
+""", height=0)
+
 # Load Alpaca secrets
 ALPACA_API_KEY = st.secrets.get("ALPACA_API_KEY")
 ALPACA_SECRET_KEY = st.secrets.get("ALPACA_SECRET_KEY")
@@ -105,6 +128,7 @@ else:
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(df_tv.to_html(escape=False, index=False), unsafe_allow_html=True)
 
+st.subheader("🔼 Top Gainers / 🔽 Top Losers")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -112,7 +136,6 @@ with col1:
     gainers = fetch_market_movers("stock_market/gainers")
     if not gainers.empty:
         st.dataframe(gainers, use_container_width=True)
-
     else:
         st.warning("No data for gainers.")
 
@@ -184,18 +207,22 @@ STRATEGY_CATEGORIES = {
         "Hammer Volume", "RSI Bullish Divergence Candlestick"
     ],
     "Momentum": [
-        "Momentum Trading", "MACD Bullish ADX", "ADX Rising MFI Surge", "TRIX OBV", "Vortex ADX"
+        "Momentum Trading", "MACD Bullish ADX", "ADX Rising MFI Surge", "TRIX OBV", "Vortex ADX",
+        "MACD Bearish Cross", "Gap and Go"  # Added
     ],
     "Mean Reversion": [
         "Mean Reversion (RSI)", "Scalping (Bollinger Bands)", "MACD RSI Oversold", "CCI Reversion",
-        "Bollinger Bounce Volume", "MFI Bollinger"
+        "Bollinger Bounce Volume", "MFI Bollinger",
+        "VWAP Breakdown Volume", "Liquidity Sweep Reversal"  # Added
     ],
     "Trend Following": [
         "Trend Following (EMA/ADX)", "Golden Cross RSI", "ADX Heikin Ashi", "SuperTrend RSI Pullback",
-        "Ichimoku Basic Combo", "Ichimoku Multi-Line", "EMA SAR"
+        "Ichimoku Basic Combo", "Ichimoku Multi-Line", "EMA SAR",
+        "SuperTrend Flip"  # Added
     ],
     "Breakout": [
-        "Breakout Trading", "Pivot Point (Intraday S/R)"
+        "Breakout Trading", "Pivot Point (Intraday S/R)",
+        "Opening Range Breakout"  # Added
     ],
     "Volatility": [
         "Bollinger Upper Break Volume", "EMA Ribbon Expansion CMF"
@@ -203,11 +230,13 @@ STRATEGY_CATEGORIES = {
     "Volume-Based": [
         "News Trading (Volatility Spike)", "TEMA Cross Volume", "Bollinger Bounce Volume",
         "Hammer Volume", "ADX Rising MFI Surge", "MFI Bollinger", "TRIX OBV", "VWAP RSI",
-        "VWAP Aroon", "EMA Ribbon Expansion CMF"
+        "VWAP Aroon", "EMA Ribbon Expansion CMF",
+        "VWAP Breakdown Volume"  # Added
     ],
     "Oscillator-Based": [
         "PSAR RSI", "RSI EMA Crossover", "CCI Bollinger", "Awesome Oscillator Divergence MACD",
-        "Heikin Ashi CMO", "MFI Bollinger"
+        "Heikin Ashi CMO", "MFI Bollinger",
+        "Bearish RSI Divergence", "MACD Bearish Cross"  # Added
     ],
     "News/Event-Driven": [
         "News Trading (Volatility Spike)"
@@ -218,9 +247,11 @@ STRATEGY_CATEGORIES = {
         "RSI Range Breakout BB", "VWAP Aroon", "EMA Ribbon Expansion CMF", "MACD Bullish ADX",
         "ADX Rising MFI Surge", "Fractal Breakout RSI", "Bollinger Upper Break Volume",
         "RSI EMA Crossover", "Vortex ADX", "Ross Hook Momentum", "RSI Bullish Divergence Candlestick",
-        "Ichimoku Basic Combo", "Ichimoku Multi-Line", "EMA SAR", "MFI Bollinger", "Hammer Volume"
+        "Ichimoku Basic Combo", "Ichimoku Multi-Line", "EMA SAR", "MFI Bollinger", "Hammer Volume",
+        "Bearish RSI Divergence", "Liquidity Sweep Reversal"  # Added
     ]
 }
+
 # Ensure ALL strategies listed in categories are present, handle potential duplicates
 ALL_UNIQUE_STRATEGY_NAMES = sorted(list(set(s_name for cat_strats in STRATEGY_CATEGORIES.values() for s_name in cat_strats)))
 
@@ -471,11 +502,113 @@ st.sidebar.caption(", ".join([f"_{s}_" for s in selected_strategies]) if selecte
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("#### 2. Select Tickers")
+st.sidebar.markdown("---")
+st.sidebar.markdown("#### 3. Backtest Strategies")
+
+# Backtest inputs
+backtest_ticker = st.sidebar.text_input(
+    "Backtest Ticker",
+    value="AAPL",
+    placeholder="Enter one ticker (e.g., AAPL)",
+    key="backtest_ticker"
+)
+backtest_strategy = st.sidebar.selectbox(
+    "Select Strategy for Backtest",
+    options=ALL_UNIQUE_STRATEGY_NAMES,
+    index=ALL_UNIQUE_STRATEGY_NAMES.index("Momentum Trading") if "Momentum Trading" in ALL_UNIQUE_STRATEGY_NAMES else 0,
+    key="backtest_strategy"
+)
+backtest_timeframe = st.sidebar.selectbox(
+    "Backtest Timeframe",
+    options=["1Min", "5Min", "15Min", "1H", "1D"],
+    index=1,  # Default to 5Min
+    key="backtest_timeframe"
+)
+backtest_start_date = st.sidebar.date_input(
+    "Start Date",
+    value=datetime.now().date() - timedelta(days=365),
+    key="backtest_start_date"
+)
+backtest_end_date = st.sidebar.date_input(
+    "End Date",
+    value=datetime.now().date(),
+    key="backtest_end_date"
+)
+backtest_initial_cash = st.sidebar.number_input(
+    "Initial Capital ($)",
+    min_value=1000.0,
+    max_value=1000000.0,
+    value=10000.0,
+    step=1000.0,
+    key="backtest_initial_cash"
+)
+backtest_stake = st.sidebar.number_input(
+    "Shares per Trade",
+    min_value=1,
+    max_value=1000,
+    value=100,
+    step=10,
+    key="backtest_stake"
+)
+
+backtest_button = st.sidebar.button(
+    "📊 Run Backtest",
+    disabled=not backtest_ticker or not backtest_strategy,
+    key="backtest_button",
+    use_container_width=True
+)
+if backtest_button:
+    try:
+        st.markdown("---")
+        st.subheader(f"📈 Backtest Results for {backtest_ticker.upper()} ({backtest_strategy})")
+
+        with st.spinner("Running backtest..."):
+            bt_result = run_backtest(
+                symbol=backtest_ticker,
+                strategy_name=backtest_strategy,
+                timeframe=backtest_timeframe,
+                start_date=backtest_start_date,
+                end_date=backtest_end_date,
+                initial_cash=backtest_initial_cash,
+                stake_per_trade=backtest_stake,
+                alpaca_client=alpaca  # אם אתה משתמש בנתוני Alpaca בתוך הבקטסט
+            )
+        st.metric("Final Portfolio Value", f"${bt_result.get('final_value', 0):,.2f}")
+        st.line_chart(bt_result.get("equity_curve"))
+
+        # הצגת התוצאה הבסיסית – לדוגמה גרף Equity Curve
+        if isinstance(bt_result, dict):
+            st.metric("Final Portfolio Value", f"${bt_result.get('final_value', 'N/A')}")
+            st.line_chart(bt_result.get("equity_curve"))  # assuming it's a pandas Series
+        else:
+            st.success("✅ Backtest completed!")
+            st.write(bt_result)  # במקרה שתחזיר object אחר
+
+    except Exception as e:
+        st.error(f"❌ Backtest failed: {e}")
+        streamlit_logger.exception("Backtest failed.")
 
 if 'fmp_tickers' not in st.session_state: st.session_state.fmp_tickers = []
 if 'fmp_last_refresh' not in st.session_state: st.session_state.fmp_last_refresh = None
 
 
+scan_button_html = """
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const textarea = parent.document.querySelector('textarea[data-testid="stTextArea"]');
+  if (textarea) {
+    textarea.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();  // לא יורד שורה
+        const btn = parent.document.querySelector('button[aria-label="🚀 Scan Selected Strategies"]');
+        if (btn) btn.click();
+      }
+    });
+  }
+});
+</script>
+"""
+st.components.v1.html(scan_button_html, height=0)
 
 
 
@@ -509,8 +642,10 @@ st.sidebar.markdown("---")
 scan_button = st.sidebar.button(
     "🚀 Scan Selected Strategies",
     disabled=not current_tickers_to_scan or not selected_strategies,
-    key="scan_button_main", use_container_width=True
+    key="scan_button_main",
+    use_container_width=True
 )
+
 
 # --- WebSocket Management ---
 if alpaca and alpaca.is_operational:
