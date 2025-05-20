@@ -1,10 +1,8 @@
-
-import streamlit as st
 import requests
 import pandas as pd
-
-API_KEY = "LQOCJ3SPdBrntavdH3mNZClLTiOqUwWc"  # עדכן לפי הצורך
-
+import streamlit as st
+API_KEY = "anc5nLqF1PuZUQGhxDHpgXuU0Yp9Cj0V"  # עדכן כאן אם יש מפתח אחר
+@st.cache_data(ttl=3600)
 def fetch_market_movers(endpoint: str, limit: int = 10) -> pd.DataFrame:
     url = f"https://financialmodelingprep.com/api/v3/{endpoint}?apikey={API_KEY}"
     response = requests.get(url)
@@ -23,16 +21,14 @@ def fetch_market_movers(endpoint: str, limit: int = 10) -> pd.DataFrame:
     df = df[present].copy()
 
     if "changesPercentage" in df.columns:
-        df["% שינוי יומי"] = df["changesPercentage"].apply(
-            lambda x: float(str(x).replace('%', '').replace('+', '')) if pd.notnull(x) else 0.0
-        )
+        df["% שינוי יומי"] = df["changesPercentage"].apply(lambda x: float(str(x).replace('%', '')) if pd.notnull(x) else 0.0)
 
     rename_map = {
-        "symbol": "symbol",
-        "companyName": "companyName",
-        "price": "price",
-        "changes": "change $",
-        "volume": "volume"
+        "symbol": "סימבול",
+        "companyName": "חברה",
+        "price": "מחיר אחרון",
+        "changes": "שינוי $",
+        "volume": "נפח מסחר"
     }
     df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns}, inplace=True)
 
@@ -40,45 +36,17 @@ def fetch_market_movers(endpoint: str, limit: int = 10) -> pd.DataFrame:
 
 def format_market_movers_section(title, df):
     if df.empty:
-        return f"### {title}\nNo data found."
+        return f"### {title}\nלא נמצאו נתונים."
 
-    def get_color_style(pct):
+    def color_pct(x):
         try:
-            pct = float(pct)
-            return 'background-color: #e6ffe6;' if pct >= 0 else 'background-color: #ffe6e6;'
+            x = float(x)
+            return f"<span style='color:{'green' if x >= 0 else 'red'}'>{x:.2f}%</span>"
         except:
-            return ''
-
-    def format_change_with_pct(row):
-        try:
-            pct = float(row.get("% שינוי יומי", 0))
-            change_val = row.get("change $", "")
-            symbol = "🔺" if pct >= 0 else "🔻"
-            return f"{change_val} {symbol} ({abs(pct):.2f}%)"
-        except:
-            return row.get("change $", "")
+            return x
 
     df_display = df.copy()
-
     if "% שינוי יומי" in df_display.columns:
-        df_display["__row_color__"] = df_display["% שינוי יומי"].apply(get_color_style)
-        df_display["change $"] = df_display.apply(format_change_with_pct, axis=1)
-        df_display.drop(columns=["% שינוי יומי"], inplace=True)
+        df_display["% שינוי יומי"] = df_display["% שינוי יומי"].apply(color_pct)
 
-    # HTML table rendering
-    table_rows = []
-    headers = ''.join([f'<th>{col}</th>' for col in df_display.columns if col != "__row_color__"])
-
-    for _, row in df_display.iterrows():
-        style = row.get("__row_color__", "")
-        cells = ''.join([f'<td>{row[col]}</td>' for col in df_display.columns if col != "__row_color__"])
-        table_rows.append(f'<tr style="{style}">{cells}</tr>')
-
-    html_table = f"""
-    <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif;">
-      <thead style="background-color: #f2f2f2;">{headers}</thead>
-      <tbody>{''.join(table_rows)}</tbody>
-    </table>
-    """
-
-    return f"### {title}\n{html_table}"
+    return f"### {title}\n" + df_display.to_html(escape=False, index=False)
