@@ -8,6 +8,14 @@ from typing import Dict, List
 # Keys: User-friendly display names (MUST MATCH app.py's STRATEGY_CATEGORIES items)
 # Values: Actual function objects from strategy_functions.py (sf.actual_function_name)
 STRATEGY_MAP = {
+    #new
+    "Bearish RSI Divergence": sf.strategy_bearish_rsi_divergence,
+    "MACD Bearish Cross": sf.strategy_macd_bearish_cross,
+    "VWAP Breakdown Volume": sf.strategy_vwap_breakdown_volume,
+    "SuperTrend Flip": sf.strategy_supertrend_flip,
+    "Opening Range Breakout": sf.strategy_opening_range_breakout,
+    "Gap and Go": sf.strategy_gap_and_go,
+    "Liquidity Sweep Reversal": sf.strategy_liquidity_sweep_reversal,
     # Pattern Recognition
     "Fractal Breakout RSI": sf.strategy_fractal_breakout_rsi,
     "Ross Hook Momentum": sf.strategy_ross_hook_momentum,
@@ -73,6 +81,13 @@ STRATEGY_MAP = {
 # Keys are the *display names*. Values are dicts of params for the corresponding strategy function.
 # (Copied from your original strategy.py)
 STRATEGY_DEFAULT_PARAMS = {
+    "Bearish RSI Divergence": {"rsi_period": 14, "div_lookback": 14},
+    "MACD Bearish Cross": {"fast": 12, "slow": 26, "signal": 9, "volume_multiplier": 1.2},
+    "VWAP Breakdown Volume": {"rsi_period": 14, "volume_multiplier": 1.5},
+    "SuperTrend Flip": {"atr_length": 10, "factor": 3.0},
+    "Opening Range Breakout": {"range_minutes": 15, "volume_multiplier": 1.5},
+    "Gap and Go": {"gap_threshold": 0.02, "rsi_period": 14, "volume_multiplier": 1.5},
+    "Liquidity Sweep Reversal": {"lookback": 20, "rsi_period": 14},
     "Momentum Trading": {"rsi_period": 14, "volume_multiplier": 2.0, "rsi_level": 70},
     "Scalping (Bollinger Bands)": {"bb_period": 20, "bb_std": 2.0},
     "Breakout Trading": {"ema_period": 20, "volume_multiplier": 1.5},
