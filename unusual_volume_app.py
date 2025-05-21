@@ -1,15 +1,4 @@
 import streamlit as st
-import alpaca_trade_api as tradeapi
-import pandas as pd
-from datetime import datetime, timedelta
-import time
-import logging
-
-# Set up logging for debugging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# --- Streamlit App Configuration ---
 st.set_page_config(layout="wide", page_title="📈 Alpaca Advanced Stock Scanner")
 st.title("📈 Alpaca Advanced Stock Scanner")
 st.markdown("""
@@ -17,6 +6,37 @@ This scanner identifies stocks with unusual trading volume, price movements, and
 **This is not financial advice. Do your own research.**
 Scanning a very large number of tickers will take a significant amount of time.
 """)
+import alpaca_trade_api as tradeapi
+import pandas as pd
+from datetime import datetime, timedelta
+import time
+import logging
+st.caption("""
+🎛️ **How to Use This Scanner**  
+This app scans thousands of US stocks for potential trading setups. Here’s what the settings mean:
+
+- **Avg Volume & Volume Multiplier**: Looks for stocks trading at unusually high volume compared to their recent average.
+- **Price Range**: Filters stocks by current price.
+- **% Change Today**: Minimum price movement required (up or down).
+- **Advanced Filters**:
+  - **Gap Scan**: Finds stocks that opened with a gap vs. yesterday's close.
+  - **VWAP**: Compares price to intraday VWAP (approximate).
+  - **Near Breakout**: Flags stocks near yesterday’s high.
+  - **Consolidation Break**: Detects range breakouts based on historical highs/lows.
+  - **Volatility Spike**: Price range is unusually large relative to recent ATR.
+  - **Float Rotation**: Daily volume exceeds float proxy (shares outstanding).
+
+📌 Use the **Preset Selector** on the left to try smart filters like “Momentum Hunt” or “Float Rotator”.
+
+👉 Click **Run Scanner** to start, and scroll down for results.
+""")
+
+# Set up logging for debugging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# --- Streamlit App Configuration ---
+
 
 # --- API Key and Configuration Handling ---
 # (This section remains the same as your provided code)
@@ -497,7 +517,88 @@ if api:
         st.info("Adjust scanner settings in the sidebar and click 'Run Scanner'.")
 else:
     st.error("API not initialized.")
+# --- Smart Presets Function ---
+def load_presets(preset):
+    if preset == "🔍 Momentum Hunt":
+        return {
+            "volume_multiplier": 2.0,
+            "min_price": 1.0,
+            "max_price": 30.0,
+            "min_avg_volume": 100_000,
+            "min_change_perc_today": 2.0,
+            "enable_gap_scan": False,
+            "enable_vwap_scan": True,
+            "enable_near_breakout_scan": True,
+            "enable_consol_break_scan": False,
+            "enable_volatility_spike_scan": False,
+            "enable_float_rotation_scan": True,
+        }
+    elif preset == "🚀 Pre-Breakout":
+        return {
+            "volume_multiplier": 1.8,
+            "min_price": 1.0,
+            "max_price": 50.0,
+            "min_avg_volume": 80_000,
+            "min_change_perc_today": 1.5,
+            "enable_gap_scan": True,
+            "enable_vwap_scan": True,
+            "enable_near_breakout_scan": True,
+            "enable_consol_break_scan": True,
+            "enable_volatility_spike_scan": False,
+            "enable_float_rotation_scan": False,
+        }
+    elif preset == "⚡ Vol Spike Only":
+        return {
+            "volume_multiplier": 2.0,
+            "min_price": 1.0,
+            "max_price": 100.0,
+            "min_avg_volume": 100_000,
+            "min_change_perc_today": 1.0,
+            "enable_gap_scan": False,
+            "enable_vwap_scan": False,
+            "enable_near_breakout_scan": False,
+            "enable_consol_break_scan": False,
+            "enable_volatility_spike_scan": True,
+            "enable_float_rotation_scan": False,
+        }
+    elif preset == "💎 Float Rotator":
+        return {
+            "volume_multiplier": 2.5,
+            "min_price": 1.0,
+            "max_price": 20.0,
+            "min_avg_volume": 50_000,
+            "min_change_perc_today": 2.0,
+            "enable_gap_scan": False,
+            "enable_vwap_scan": False,
+            "enable_near_breakout_scan": False,
+            "enable_consol_break_scan": False,
+            "enable_volatility_spike_scan": False,
+            "enable_float_rotation_scan": True,
+        }
+    elif preset == "🧪 All-In Strict":
+        return {
+            "volume_multiplier": 3.0,
+            "min_price": 1.0,
+            "max_price": 50.0,
+            "min_avg_volume": 150_000,
+            "min_change_perc_today": 3.0,
+            "enable_gap_scan": True,
+            "enable_vwap_scan": True,
+            "enable_near_breakout_scan": True,
+            "enable_consol_break_scan": True,
+            "enable_volatility_spike_scan": True,
+            "enable_float_rotation_scan": True,
+        }
+    return {}
 
+# --- Preset Selector UI ---
+preset = st.sidebar.selectbox("📌 Load Preset:", ["None", "🔍 Momentum Hunt", "🚀 Pre-Breakout", "⚡ Vol Spike Only", "💎 Float Rotator", "🧪 All-In Strict"])
+
+if preset != "None":
+    settings = load_presets(preset)
+    for key, val in settings.items():
+        st.session_state[key] = val
+    st.sidebar.success(f"Preset '{preset}' loaded.")
 st.sidebar.markdown("---")
 st.sidebar.markdown("Data by Alpaca. Not financial advice.")
 st.markdown("---")
