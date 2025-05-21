@@ -383,8 +383,12 @@ if api:
                 if vwap_approx:
                     if current_price > vwap_approx: signals.append("📈>VWAP")
                     else: signals.append("📉<VWAP")
-                if enable_vwap_scan and vwap_approx is None: # If scan enabled but no VWAP data, filter out
-                    pass_advanced_filters = False
+                if enable_vwap_scan:
+                    if vwap_approx is None:
+                        pass_advanced_filters = False
+                    elif current_price > vwap_approx:
+                        pass_advanced_filters = False  # Fail if NOT < VWAP (we're scanning for breakdown)
+
 
 
                 # 3. Near Breakout
