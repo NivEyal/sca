@@ -6,6 +6,7 @@ This scanner identifies stocks with unusual trading volume, price movements, and
 **This is not financial advice. Do your own research.**
 Scanning a very large number of tickers will take a significant amount of time.
 """)
+from strategy import run_strategies  # This uses strategy.py which calls all strategy functions
 import alpaca_trade_api as tradeapi
 import pandas as pd
 from datetime import datetime, timedelta
@@ -203,6 +204,13 @@ if api:
         help=f"Limits symbols for data fetching. Max available: {total_available_assets}."
     )
     sort_by = st.sidebar.selectbox("Sort results by:", ["Volume Ratio", "Change %", "Current Price", "Float Rotation"], index=0, key="sort")
+    st.sidebar.header("🧠 Strategy Scanner")
+    available_strategies = list(run_strategies.__globals__["STRATEGY_MAP"].keys())
+    selected_strategies = st.sidebar.multiselect(
+        "Select strategies to run:",
+        available_strategies,
+        default=["Momentum Trading", "Breakout Trading"]  # or leave empty
+    )
 
 
     if st.sidebar.button("🔄 Run Scanner"):
