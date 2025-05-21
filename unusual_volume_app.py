@@ -198,7 +198,7 @@ if api:
 
 
     total_available_assets = len(get_all_tradable_assets_data(api))
-    max_slider_val = min(total_available_assets, 7000)
+    max_slider_val = min(total_available_assets, 11263)
     max_stocks_to_scan_live = st.sidebar.slider(
         "Max stocks to fetch data for (performance):", 100, max_slider_val, 500, 50,
         help=f"Limits symbols for data fetching. Max available: {total_available_assets}."
