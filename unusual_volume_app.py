@@ -164,7 +164,7 @@ if api:
     st.sidebar.header("⚙️ Scanner Settings")
     # Core Volume & Price Settings
     lookback_days_avg_vol = st.sidebar.slider("Lookback days for Avg. Volume:", 5, 60, 20, key="lookback_hist")
-    volume_multiplier = st.sidebar.slider("Min Volume Multiplier (Current > Avg * X):", 1.0, 20.0, 3.0, 0.1, key="vol_multi")
+    volume_multiplier = st.sidebar.slider("Min Volume Multiplier (Current > Avg * X):", 0.0, 20.0, 3.0, 0.1, key="vol_multi")
     min_price = st.sidebar.number_input("Minimum Stock Price:", value=1.0, min_value=0.01, step=0.1, key="min_p")
     max_price = st.sidebar.number_input("Maximum Stock Price:", value=200.0, min_value=1.0, step=1.0, key="max_p")
     min_avg_volume = st.sidebar.number_input("Minimum Avg Daily Volume (hist):", value=50000, min_value=0, step=10000, key="min_avg_vol")
