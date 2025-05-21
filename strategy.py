@@ -139,12 +139,27 @@ STRATEGY_DEFAULT_PARAMS = {
     "CMF EMA Ribbon": {"cmf_period": 20, "ema_lengths": [20, 50], "cmf_level": 0.0},
 }
 
-def run_strategies(df: pd.DataFrame, strategy_names: List[str]) -> Dict[str, str]:
-    results = {}
-    if df.empty:
-        for name in strategy_names:
-            results[name] = "ERROR: Input DataFrame is empty"
-        return results
+def run_strategies(data_dict: Dict[str, pd.DataFrame], selected: List[str]) -> List[Dict]:
+    results = []
+    for symbol, df in data_dict.items():
+        for name in selected:
+            func = STRATEGY_MAP.get(name)
+            params = STRATEGY_DEFAULT_PARAMS.get(name, {})
+            if func:
+                try:
+                    df_with_signals = func(df.copy(), **params)
+                    entry_cols = [col for col in df_with_signals.columns if "_Entry" in col and df_with_signals[col].any()]
+                    if entry_cols:
+                        results.append({
+                            "symbol": symbol,
+                            "strategy": name,
+                            "entry_signals": entry_cols,
+                            "latest_row": df_with_signals.iloc[-1].to_dict()
+                        })
+                except Exception as e:
+                    print(f"Error running {name} on {symbol}: {e}")
+    return results
+
 
     # Ensure DataFrame has necessary columns (lowercase)
     required_cols = ['open', 'high', 'low', 'close', 'volume']
