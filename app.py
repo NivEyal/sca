@@ -115,16 +115,26 @@ else:
             price_data = get_latest_price_and_change(alpaca, t)
             price_change_data[t] = price_data
 
-    df_tv["Last Close"] = df_tv["Symbol"].apply(lambda t: price_change_data.get(t, {}).get("last_close", "N/A"))
-    df_tv["Prev Close"] = df_tv["Symbol"].apply(lambda t: price_change_data.get(t, {}).get("prev_close", "N/A"))
-    df_tv["% Change"] = df_tv["Symbol"].apply(lambda t: price_change_data.get(t, {}).get("pct_change", "N/A"))
-    df_tv["% Change"] = df_tv["% Change"].apply(
-        lambda x: f"🔻 {x:.2f}%" if isinstance(x, float) and x < 0 else f"🟢 {x:.2f}%" if isinstance(x, float) else x
-    )
+    df_tv["Last Price"] = df_tv["Symbol"].apply(lambda t: price_change_data.get(t, {}).get("last_price", "N/A"))
+df_tv["Prev Close"] = df_tv["Symbol"].apply(lambda t: price_change_data.get(t, {}).get("prev_close", "N/A"))
+
+def calculate_change(row):
+    try:
+        last = float(row["Last Price"])
+        prev = float(row["Prev Close"])
+        if prev == 0:
+            return "-"
+        change_pct = ((last - prev) / prev) * 100
+        return f"🔻 {change_pct:.2f}%" if change_pct < 0 else f"🟢 {change_pct:.2f}%"
+    except:
+        return "-"
+
+df_tv["% Change"] = df_tv.apply(calculate_change, axis=1)
+
 
     # ✅ הצגת טבלה בעיצוב HTML עם עמודות After-Hours
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown(df_tv.to_html(escape=False, index=False), unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
+st.markdown(df_tv.to_html(escape=False, index=False), unsafe_allow_html=True)
 
 st.subheader("🔼 Top Gainers / 🔽 Top Losers")
 
