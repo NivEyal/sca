@@ -1401,7 +1401,7 @@ if scan_button:
                     with results_container: st.warning(f"Insufficient data ({len(df_ticker)} bars) for {ticker}. Min 50 needed. Skipping.")
                     continue
                 try:
-                    signals: Dict[str, str] = run_strategies(df_ticker.copy(), selected_strategies)
+                    signals: Dict[str, str] = run_strategies({ticker: df_ticker.copy()}, selected_strategies)
                     latest_bar = df_ticker.iloc[-1]
                     signal_texts_buy = [s_name for s_name, s_val in signals.items() if s_val == "BUY"]
                     signal_texts_sell = [s_name for s_name, s_val in signals.items() if s_val == "SELL"]
