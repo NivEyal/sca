@@ -141,91 +141,40 @@ STRATEGY_DEFAULT_PARAMS = {
 
 def run_strategies(data_dict: Dict[str, pd.DataFrame], selected: List[str]) -> List[Dict]:
     results = []
+    required_cols = ['open', 'high', 'low', 'close', 'volume']
+
     for symbol, df in data_dict.items():
-        for name in selected:
-            func = STRATEGY_MAP.get(name)
-            params = STRATEGY_DEFAULT_PARAMS.get(name, {})
+        # Validate essential columns exist
+        if not all(col in df.columns for col in required_cols):
+            print(f"Skipping {symbol}: missing required columns.")
+            continue
+        df[required_cols] = df[required_cols].apply(pd.to_numeric, errors='coerce')
+        if df[required_cols].isnull().any().any():
+            print(f"Skipping {symbol}: NaN values found in required columns after conversion.")
+            continue
+
+        for strategy_name in selected:
+            func = STRATEGY_MAP.get(strategy_name)
+            params = STRATEGY_DEFAULT_PARAMS.get(strategy_name, {})
             if func:
                 try:
                     df_with_signals = func(df.copy(), **params)
-                    entry_cols = [col for col in df_with_signals.columns if "_Entry" in col and df_with_signals[col].any()]
+                    entry_cols = [
+                        col for col in df_with_signals.columns
+                        if "_Entry" in col and df_with_signals[col].any()
+                    ]
                     if entry_cols:
                         results.append({
                             "symbol": symbol,
-                            "strategy": name,
+                            "strategy": strategy_name,
                             "entry_signals": entry_cols,
                             "latest_row": df_with_signals.iloc[-1].to_dict()
                         })
                 except Exception as e:
-                    print(f"Error running {name} on {symbol}: {e}")
+                    print(f"Error running strategy '{strategy_name}' on {symbol}: {e}")
+            else:
+                print(f"Strategy '{strategy_name}' not found in STRATEGY_MAP.")
     return results
 
 
-    # Ensure DataFrame has necessary columns (lowercase)
-    required_cols = ['open', 'high', 'low', 'close', 'volume']
-    missing_cols = [col for col in required_cols if col not in df.columns]
-    if missing_cols:
-        for name in strategy_names:
-            results[name] = f"ERROR: DataFrame missing columns: {', '.join(missing_cols)}"
-        return results
-    
-    # Ensure columns are numeric
-    for col in required_cols:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-    if df[required_cols].isnull().any().any(): # Check for NaNs after coercion
-        for name in strategy_names:
-             results[name] = "ERROR: Non-numeric data or NaNs in OHLCV columns"
-        return results
 
-
-    for name in strategy_names:
-        if name in STRATEGY_MAP:
-            strategy_function_to_call = STRATEGY_MAP[name]
-            params_for_function = STRATEGY_DEFAULT_PARAMS.get(name, {})
-            
-            try:
-                # It's crucial that functions in sf return a DataFrame with boolean signal columns
-                df_with_signals = strategy_function_to_call(df.copy(), **params_for_function)
-                
-                signal = "NONE"
-                # Prioritize specific "Entry_Buy" or "Entry_Sell" if they exist
-                latest_buy_signal = False
-                if f"{name.replace(' ', '').replace('(', '').replace(')','').replace('/','')}_Entry_Buy" in df_with_signals.columns and \
-                   not df_with_signals[f"{name.replace(' ', '').replace('(', '').replace(')','').replace('/','')}_Entry_Buy"].empty:
-                    latest_buy_signal = bool(df_with_signals[f"{name.replace(' ', '').replace('(', '').replace(')','').replace('/','')}_Entry_Buy"].iloc[-1])
-                
-                latest_sell_signal = False
-                if f"{name.replace(' ', '').replace('(', '').replace(')','').replace('/','')}_Entry_Sell" in df_with_signals.columns and \
-                   not df_with_signals[f"{name.replace(' ', '').replace('(', '').replace(')','').replace('/','')}_Entry_Sell"].empty:
-                    latest_sell_signal = bool(df_with_signals[f"{name.replace(' ', '').replace('(', '').replace(')','').replace('/','')}_Entry_Sell"].iloc[-1])
-
-                # Generic "Entry" column check if specific buy/sell aren't primary
-                if not latest_buy_signal and not latest_sell_signal:
-                    generic_entry_cols = [col for col in df_with_signals.columns if "Entry" in col and col not in df.columns]
-                    for col in generic_entry_cols:
-                        if not df_with_signals[col].empty and isinstance(df_with_signals[col].iloc[-1], (bool, np.bool_)) and df_with_signals[col].iloc[-1]:
-                            # Assuming generic "Entry" implies a BUY for this scanner's purpose
-                            latest_buy_signal = True 
-                            break
-                
-                if latest_buy_signal and latest_sell_signal:
-                    signal = "BUY/SELL CONFLICT"
-                elif latest_buy_signal:
-                    signal = "BUY"
-                elif latest_sell_signal:
-                    signal = "SELL"
-                
-                results[name] = signal
-
-            except Exception as e:
-                import traceback
-                print(f"--- ERROR RUNNING STRATEGY: {name} ---")
-                print(f"Params: {params_for_function}")
-                traceback.print_exc()
-                results[name] = f"ERROR: {str(e)}"
-        else:
-            results[name] = f"ERROR: Strategy '{name}' not in STRATEGY_MAP"
-    return results
-
-
-    
