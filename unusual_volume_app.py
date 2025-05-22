@@ -1,6 +1,6 @@
 import streamlit as st
 st.set_page_config(layout="wide", page_title="📈 Niv Advanced Stock Scanner")
-st.title("📈 Niv Advanced Stock Scanner")
+st.title("📈 Alpaca Advanced Stock Scanner")
 st.markdown("""
 This scanner identifies stocks with unusual trading volume, price movements, and other technical signals.
 **This is not financial advice. Do your own research.**
@@ -212,7 +212,7 @@ if api:
     selected_strategies = st.sidebar.multiselect(
         "Select strategies to run:",
         available_strategies,
-        default=["Momentum Trading", "Breakout Trading"]  # or leave empty
+        default=[]  # or leave empty
     )
 
 
@@ -556,87 +556,84 @@ if api:
 else:
     st.error("API not initialized.")
 # --- Smart Presets Function ---
-def load_presets(preset):
-    if preset == "🔍 Momentum Hunt":
-        return {
-            "volume_multiplier": 2.0,
-            "min_price": 1.0,
-            "max_price": 30.0,
-            "min_avg_volume": 100_000,
-            "min_change_perc_today": 2.0,
-            "enable_gap_scan": False,
-            "enable_vwap_scan": True,
-            "enable_near_breakout_scan": True,
-            "enable_consol_break_scan": False,
-            "enable_volatility_spike_scan": False,
-            "enable_float_rotation_scan": True,
-        }
-    elif preset == "🚀 Pre-Breakout":
-        return {
-            "volume_multiplier": 1.8,
-            "min_price": 1.0,
-            "max_price": 50.0,
-            "min_avg_volume": 80_000,
-            "min_change_perc_today": 1.5,
-            "enable_gap_scan": True,
-            "enable_vwap_scan": True,
-            "enable_near_breakout_scan": True,
-            "enable_consol_break_scan": True,
-            "enable_volatility_spike_scan": False,
-            "enable_float_rotation_scan": False,
-        }
-    elif preset == "⚡ Vol Spike Only":
-        return {
-            "volume_multiplier": 2.0,
-            "min_price": 1.0,
-            "max_price": 100.0,
-            "min_avg_volume": 100_000,
-            "min_change_perc_today": 1.0,
-            "enable_gap_scan": False,
-            "enable_vwap_scan": False,
-            "enable_near_breakout_scan": False,
-            "enable_consol_break_scan": False,
-            "enable_volatility_spike_scan": True,
-            "enable_float_rotation_scan": False,
-        }
-    elif preset == "💎 Float Rotator":
-        return {
-            "volume_multiplier": 2.5,
-            "min_price": 1.0,
-            "max_price": 20.0,
-            "min_avg_volume": 50_000,
-            "min_change_perc_today": 2.0,
-            "enable_gap_scan": False,
-            "enable_vwap_scan": False,
-            "enable_near_breakout_scan": False,
-            "enable_consol_break_scan": False,
-            "enable_volatility_spike_scan": False,
-            "enable_float_rotation_scan": True,
-        }
-    elif preset == "🧪 All-In Strict":
-        return {
-            "volume_multiplier": 3.0,
-            "min_price": 1.0,
-            "max_price": 50.0,
-            "min_avg_volume": 150_000,
-            "min_change_perc_today": 3.0,
-            "enable_gap_scan": True,
-            "enable_vwap_scan": True,
-            "enable_near_breakout_scan": True,
-            "enable_consol_break_scan": True,
-            "enable_volatility_spike_scan": True,
-            "enable_float_rotation_scan": True,
-        }
-    return {}
+st.sidebar.markdown("### 🔧 Defaults (Presets)")
+default_presets = {
+    "🔍 Momentum Hunt": {
+        "volume_multiplier": 2.0,
+        "min_price": 1.0,
+        "max_price": 30.0,
+        "min_avg_volume": 100_000,
+        "min_change_perc_today": 2.0,
+        "enable_gap_scan": False,
+        "enable_vwap_scan": True,
+        "enable_near_breakout_scan": True,
+        "enable_consol_break_scan": False,
+        "enable_volatility_spike_scan": False,
+        "enable_float_rotation_scan": True,
+    },
+    "🚀 Pre-Breakout": {
+        "volume_multiplier": 1.8,
+        "min_price": 1.0,
+        "max_price": 50.0,
+        "min_avg_volume": 80_000,
+        "min_change_perc_today": 1.5,
+        "enable_gap_scan": True,
+        "enable_vwap_scan": True,
+        "enable_near_breakout_scan": True,
+        "enable_consol_break_scan": True,
+        "enable_volatility_spike_scan": False,
+        "enable_float_rotation_scan": False,
+    },
+    "⚡ Vol Spike Only": {
+        "volume_multiplier": 2.0,
+        "min_price": 1.0,
+        "max_price": 100.0,
+        "min_avg_volume": 100_000,
+        "min_change_perc_today": 1.0,
+        "enable_gap_scan": False,
+        "enable_vwap_scan": False,
+        "enable_near_breakout_scan": False,
+        "enable_consol_break_scan": False,
+        "enable_volatility_spike_scan": True,
+        "enable_float_rotation_scan": False,
+    },
+    "💎 Float Rotator": {
+        "volume_multiplier": 2.5,
+        "min_price": 1.0,
+        "max_price": 20.0,
+        "min_avg_volume": 50_000,
+        "min_change_perc_today": 2.0,
+        "enable_gap_scan": False,
+        "enable_vwap_scan": False,
+        "enable_near_breakout_scan": False,
+        "enable_consol_break_scan": False,
+        "enable_volatility_spike_scan": False,
+        "enable_float_rotation_scan": True,
+    },
+    "🧪 All-In Strict": {
+        "volume_multiplier": 3.0,
+        "min_price": 1.0,
+        "max_price": 50.0,
+        "min_avg_volume": 150_000,
+        "min_change_perc_today": 3.0,
+        "enable_gap_scan": True,
+        "enable_vwap_scan": True,
+        "enable_near_breakout_scan": True,
+        "enable_consol_break_scan": True,
+        "enable_volatility_spike_scan": True,
+        "enable_float_rotation_scan": True,
+    }
+}
+
+preset_selected = st.sidebar.selectbox("Apply Default Settings:", ["None"] + list(default_presets.keys()))
+if preset_selected != "None":
+    for k, v in default_presets[preset_selected].items():
+        st.session_state[k] = v
+    st.sidebar.success(f"Loaded preset: {preset_selected}")
+
 
 # --- Preset Selector UI ---
-preset = st.sidebar.selectbox("📌 Load Preset:", ["None", "🔍 Momentum Hunt", "🚀 Pre-Breakout", "⚡ Vol Spike Only", "💎 Float Rotator", "🧪 All-In Strict"])
 
-if preset != "None":
-    settings = load_presets(preset)
-    for key, val in settings.items():
-        st.session_state[key] = val
-    st.sidebar.success(f"Preset '{preset}' loaded.")
 st.sidebar.markdown("---")
 st.sidebar.markdown("Data by Alpaca. Not financial advice.")
 st.markdown("---")
@@ -1401,10 +1398,17 @@ if scan_button:
                     with results_container: st.warning(f"Insufficient data ({len(df_ticker)} bars) for {ticker}. Min 50 needed. Skipping.")
                     continue
                 try:
-                    signals: Dict[str, str] = run_strategies({ticker: df_ticker.copy()}, selected_strategies)
+                    results = run_strategies({ticker: df_ticker.copy()}, selected_strategies)
                     latest_bar = df_ticker.iloc[-1]
-                    signal_texts_buy = [s_name for s_name, s_val in signals.items() if s_val == "BUY"]
-                    signal_texts_sell = [s_name for s_name, s_val in signals.items() if s_val == "SELL"]
+                    signal_texts_buy = []
+                    signal_texts_sell = []
+
+                    for res in results:
+                        buy_signals = [sig for sig in res.get("entry_signals", []) if "Buy" in sig]
+                        sell_signals = [sig for sig in res.get("entry_signals", []) if "Sell" in sig]
+                        signal_texts_buy.extend(buy_signals)
+                        signal_texts_sell.extend(sell_signals)
+
                     with results_container:
                         st.markdown(f"--- \n ### {ticker.upper()}")
                         col_info, col_chart = st.columns([1, 2])
