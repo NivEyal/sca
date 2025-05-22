@@ -13,24 +13,26 @@ from datetime import datetime, timedelta
 import time
 import logging
 st.caption("""
-🎛️ **How to Use This Scanner**  
-This app scans thousands of US stocks for potential trading setups. Here’s what the settings mean:
+🎛️ **Quick Guide: Stock Scanner**  
+Scan thousands of US stocks for 🔍 setups like:
 
-- **Avg Volume & Volume Multiplier**: Looks for stocks trading at unusually high volume compared to their recent average.
-- **Price Range**: Filters stocks by current price.
-- **% Change Today**: Minimum price movement required (up or down).
-- **Advanced Filters**:
-  - **Gap Scan**: Finds stocks that opened with a gap vs. yesterday's close.
-  - **VWAP**: Compares price to intraday VWAP (approximate).
-  - **Near Breakout**: Flags stocks near yesterday’s high.
-  - **Consolidation Break**: Detects range breakouts based on historical highs/lows.
-  - **Volatility Spike**: Price range is unusually large relative to recent ATR.
-  - **Float Rotation**: Daily volume exceeds float proxy (shares outstanding).
+- 📊 **High Volume**: Unusual volume vs. average  
+- 💵 **Price Filters**: Set your min/max range  
+- 📈 **% Change**: Require minimum daily move  
 
-📌 Use the **Preset Selector** on the left to try smart filters like “Momentum Hunt” or “Float Rotator”.
+**🔧 Advanced Filters:**  
+- 🚀 Gap Ups/Downs  
+- 📍 VWAP Position  
+- 🔓 Near Breakouts  
+- 📉 Consolidation Breaks  
+- 🌪️ Volatility Spikes (ATR-based)  
+- 🔄 Float Rotation (Volume > Float)
 
-👉 Click **Run Scanner** to start, and scroll down for results.
+🧠 Try a **Preset** like *Momentum Hunt* or *Float Rotator* on the left.
+
+▶️ **Click "Run Scanner"** to begin. Scroll down for results!
 """)
+
 
 # Set up logging for debugging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
