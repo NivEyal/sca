@@ -106,23 +106,34 @@ def strategy_macd_bearish_cross(df, fast=12, slow=26, signal=9, volume_multiplie
 
 def strategy_vwap_breakdown_volume(df, rsi_period=14, volume_multiplier=1.5):
     df_ = df.copy()
+
+    # ✅ Ensure datetime index and sorted order
+    if not pd.api.types.is_datetime64_any_dtype(df_.index):
+        if 'timestamp' in df_.columns:
+            df_['timestamp'] = pd.to_datetime(df_['timestamp'])
+            df_.set_index('timestamp', inplace=True)
+        else:
+            df_.index = pd.to_datetime(df_.index)
+    df_ = df_.sort_index()
+
     base_name = "VWAPBreakdownVolume"
     min_data_needed = rsi_period + 1
     if len(df_) < min_data_needed:
         return _add_empty_signals(df_, base_name, buy=False, sell=True)
-    
+
     vwap_data = ta.vwap(df_["high"], df_["low"], df_["close"], df_["volume"])
     df_[f"RSI_{rsi_period}"] = ta.rsi(df_["close"], length=rsi_period)
+
     if vwap_data is None:
         return _add_empty_signals(df_, base_name, buy=False, sell=True)
-    
+
     df_["VWAP"] = vwap_data
     df_["Volume_Avg"] = df_["volume"].rolling(window=10).mean()
-    
+
     entry_cond1 = crossed_below_series(df_["close"], df_["VWAP"])
     entry_cond2 = detect_volume_increase(df_, lookback=5, multiplier=volume_multiplier)
     entry_cond3 = df_[f"RSI_{rsi_period}"] > 50  # Ensure not oversold
-    
+
     df_[f"{base_name}_Entry_Sell"] = entry_cond1 & entry_cond2 & entry_cond3
     df_[f"{base_name}_Exit_Sell"] = crossed_above_series(df_["close"], df_["VWAP"])
     return df_
