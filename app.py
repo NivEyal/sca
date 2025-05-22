@@ -26,6 +26,27 @@ from strategy import run_strategies
 from alpaca_connector import get_latest_price_and_change
 from datetime import datetime, timedelta
 import streamlit.components.v1 as components
+import finnhub
+finnhub_client = finnhub.Client(api_key=st.secrets["FINNHUB_API_KEY"])
+
+def get_finnhub_price_data(symbol: str) -> Dict[str, float]:
+    try:
+        quote = finnhub_client.quote(symbol)
+        last_price = quote.get("c")  # current
+        prev_close = quote.get("pc")  # previous close
+
+        if last_price is None or prev_close is None:
+            return {"last_price": None, "prev_close": None, "pct_change": None}
+
+        pct_change = ((last_price - prev_close) / prev_close) * 100 if prev_close != 0 else None
+        return {
+            "last_price": round(last_price, 2),
+            "prev_close": round(prev_close, 2),
+            "pct_change": round(pct_change, 2) if pct_change is not None else None
+        }
+    except Exception as e:
+        logging.warning(f"Finnhub fallback failed for {symbol}: {e}")
+        return {"last_price": None, "prev_close": None, "pct_change": None}
 
 components.html("""
 <script>
@@ -110,13 +131,24 @@ else:
         
     # 🕓 הוספת נתוני AFTER-HOURS מהסריקה בגוגל
     price_change_data = {}
-    with st.spinner("📡 Fetching real-time prices from Alpaca..."):
-        for t in df_tv["Symbol"]:
-            price_data = get_latest_price_and_change(alpaca, t)
-            price_change_data[t] = price_data
+with st.spinner("📡 Fetching real-time prices from Alpaca (fallback: Finnhub)..."):
+    for t in df_tv["Symbol"]:
+        price_data = get_latest_price_and_change(alpaca, t)
+        if price_data.get("last_price") is None or price_data.get("prev_close") is None:
+            finnhub_data = get_finnhub_price_data(t)
+            price_data.update(finnhub_data)  # Only fills missing keys
+        price_change_data[t] = price_data
 
-    df_tv["Last Price"] = df_tv["Symbol"].apply(lambda t: price_change_data.get(t, {}).get("last_price", "N/A"))
+df_tv["Last Price"] = df_tv["Symbol"].apply(lambda t: price_change_data.get(t, {}).get("last_price", "N/A"))
 df_tv["Prev Close"] = df_tv["Symbol"].apply(lambda t: price_change_data.get(t, {}).get("prev_close", "N/A"))
+
+def format_change_value(val):
+    if val is None or pd.isna(val):
+        return "-"
+    color = "green" if val > 0 else "red"
+    return f"<span style='color:{color}'>{val:.2f}%</span>"
+
+df_tv["% Change"] = df_tv["Symbol"].apply(lambda t: format_change_value(price_change_data.get(t, {}).get("pct_change")))
 
 def calculate_change(row):
     try:
