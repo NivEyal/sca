@@ -212,7 +212,7 @@ if api:
     selected_strategies = st.sidebar.multiselect(
         "Select strategies to run:",
         available_strategies,
-        default=["Momentum Trading", "Breakout Trading"]  # or leave empty
+        default=[]  # or leave empty
     )
 
 
