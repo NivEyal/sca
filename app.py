@@ -28,7 +28,7 @@ from datetime import datetime, timedelta
 import streamlit.components.v1 as components
 import finnhub
 finnhub_client = finnhub.Client(api_key=st.secrets["FINNHUB_API_KEY"])
-
+@st.cache_data(show_spinner=False)
 def get_finnhub_price_data(symbol: str) -> Dict[str, float]:
     try:
         quote = finnhub_client.quote(symbol)
