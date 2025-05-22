@@ -1,6 +1,6 @@
 import streamlit as st
 st.set_page_config(layout="wide", page_title="📈 Niv Advanced Stock Scanner")
-st.title("📈 Alpaca Advanced Stock Scanner")
+st.title("📈 Niv Advanced Stock Scanner")
 st.markdown("""
 This scanner identifies stocks with unusual trading volume, price movements, and other technical signals.
 **This is not financial advice. Do your own research.**
