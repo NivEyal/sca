@@ -1,29 +1,34 @@
 {
-  "name": "Python 3",
+  "name": "Trading Strategy Scanner",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bullseye",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true
+    }
+  },
   "customizations": {
-    "codespaces": {
-      "openFiles": [
-        "README.md",
-        "index.html"
-      ]
-    },
     "vscode": {
-      "settings": {},
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.formatting.provider": "black"
+      },
       "extensions": [
         "ms-python.python",
-        "ms-python.vscode-pylance"
+        "ms-python.vscode-pylance",
+        "ms-python.flake8"
       ]
     }
   },
-  "postCreateCommand": "pip3 install --user -r requirements.txt",
+  "postCreateCommand": "pip install --upgrade pip && pip install -r requirements.txt",
+  "forwardPorts": [5000],
   "portsAttributes": {
     "5000": {
       "label": "Trading Scanner",
       "onAutoForward": "openPreview"
     }
   },
-  "forwardPorts": [
-    5000
-  ]
+  "remoteUser": "vscode"
 }
