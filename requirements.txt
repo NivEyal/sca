@@ -1,22 +1,21 @@
-# Streamlit App Core
-streamlit==1.35.0
+# Core Web Framework
+Flask==2.3.3
+Flask-CORS==4.0.0
+
+# Data Processing
 pandas==2.2.2
 numpy==1.26.4
 pandas_ta==0.3.14b0
-setuptools>=65.0.0
 
 # API Integration
 alpaca_trade_api==2.3.0
-alpaca-py==0.10.0
 yfinance>=0.2.0
 finnhub-python==2.4.12
-tradingview-ta==3.3.0  # ✅ עדכון מ־0.9.3
+tradingview-ta==3.3.0
 
-# Utility and Infra
-websockets>=10.0
-pydantic==1.10.12  # ✅ תואם ל־alpaca-py
-environs>=9.0.0
-structlog>=21.0.0
-redis>=5.0.0
-plotly>=5.0.0
+# Utility Libraries
 requests>=2.25.0
+python-dateutil>=2.8.0
+
+# Development
+setuptools>=65.0.0
