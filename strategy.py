@@ -54,7 +54,7 @@ STRATEGY_DEFAULT_PARAMS = {
     "VWAP RSI": {"rsi_period": 14, "rsi_level": 50},
     "EMA Ribbon MACD": {"ema_lengths": [8, 13, 21, 34, 55], "macd_fast": 12, "macd_slow": 26, "macd_signal": 9},
     "TRIX OBV": {"trix_period": 15, "trix_signal": 9},
-    "VWAP Aroon": {"aroon_period": 14, "aroon_level": 70},
+    "VWAP Aroon": {"aroon_period": 14, "aroon_level": 70},}
     for symbol, df in data_dict.items():
         # Validate essential columns exist
         if not all(col in df.columns for col in required_cols):
