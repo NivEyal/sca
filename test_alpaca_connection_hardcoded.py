@@ -16,8 +16,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Hard-coded Alpaca API credentials from secrets.toml
-API_KEY = "AKNBUFB8HJFN2XTQWXSK"
-SECRET_KEY = "hSQOdDX7A1Ujj65N9nzE3qikNNUyNceKWGaolbmK"
+API_KEY = "AK2V88RDO5MYCFOE8FJH"
+SECRET_KEY = "gmCM49z9z3VlmTnoF7vsn9wliXZz6SE6NHCs5d5I"
 DATA_FEED = "iex"  # From APCA_DATA_FEED
 PAPER_TRADING = False  # From APCA_PAPER
 BASE_URL = "https://paper-api.alpaca.markets" if PAPER_TRADING else "https://api.alpaca.markets"

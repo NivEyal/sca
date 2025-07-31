@@ -1,8 +1,8 @@
 from alpaca_data import AlpacaConnector
 
 # Replace with your working keys
-API_KEY = "AKNBUFB8HJFN2XTQWXSK"
-SECRET_KEY = "hSQOdDX7A1Ujj65N9nzE3qikNNUyNceKWGaolbmK"
+API_KEY = "AK2V88RDO5MYCFOE8FJH"
+SECRET_KEY = "gmCM49z9z3VlmTnoF7vsn9wliXZz6SE6NHCs5d5I"
 BASE_URL = "https://api.alpaca.markets"
 DATA_FEED = "iex"
 PAPER_TRADING = False
