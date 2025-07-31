@@ -31,7 +31,7 @@ class AlpacaConnector:
         api_key: str,
         secret_key: str,
         paper: bool = False,
-        feed: str = "sip", # Default to IEX
+        feed: str = "iex", # Default to IEX
         base_url_override: Optional[str] = None # Renamed from base_url to avoid confusion
     ):
         self.api_key = api_key

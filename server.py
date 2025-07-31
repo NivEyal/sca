@@ -20,14 +20,14 @@ import numpy as np
 
 # Import your existing modules
 try:
-    from alpaca_connector import AlpacaConnector, DataFeed
+    from alpaca_data import AlpacaConnector, DataFeed
     from strategy import run_strategies, STRATEGY_MAP
     from top_volume import get_top_volume_tickers
-    from config import STRATEGY_CATEGORIES, TIMEFRAMES, DATA_LIMITS, DEFAULT_TICKERS
+    # from config import STRATEGY_CATEGORIES, TIMEFRAMES, DATA_LIMITS, DEFAULT_TICKERS
 except ImportError as e:
     print(f"Import error: {e}")
     print("Please ensure all required modules are available")
-    sys.exit(1)
+    # sys.exit(1)  # Don't exit, use fallback values
 
 # Configure logging
 logging.basicConfig(
@@ -56,15 +56,86 @@ API_CONFIG = {
     'DATA_FEED': 'iex'
 }
 
+# Fallback configuration values
+STRATEGY_CATEGORIES = {
+    "🎯 Momentum": [
+        "Momentum Trading",
+        "MACD Bullish ADX", 
+        "ADX Rising MFI Surge",
+        "TRIX OBV",
+        "Vortex ADX"
+    ],
+    "📈 Trend Following": [
+        "Trend Following (EMA/ADX)",
+        "Golden Cross RSI",
+        "SuperTrend RSI Pullback",
+        "ADX Heikin Ashi",
+        "Ichimoku Basic Combo",
+        "Ichimoku Multi-Line",
+        "EMA SAR"
+    ],
+    "🔄 Mean Reversion": [
+        "Mean Reversion (RSI)",
+        "Scalping (Bollinger Bands)",
+        "MACD RSI Oversold",
+        "CCI Reversion",
+        "Keltner RSI Oversold",
+        "Keltner MFI Oversold",
+        "Bollinger Bounce Volume",
+        "MFI Bollinger"
+    ],
+    "💥 Breakout & Patterns": [
+        "Breakout Trading",
+        "Opening Range Breakout",
+        "Gap and Go",
+        "Fractal Breakout RSI",
+        "Pivot Point (Intraday S/R)",
+        "Liquidity Sweep Reversal"
+    ],
+    "📊 Volume & Volatility": [
+        "VWAP RSI",
+        "News Trading (Volatility Spike)",
+        "TEMA Cross Volume",
+        "VWAP Aroon",
+        "VWAP Breakdown Volume",
+        "Bollinger Upper Break Volume"
+    ]
+}
+
+TIMEFRAMES = {
+    "1 Minute": "1Min",
+    "5 Minutes": "5Min", 
+    "15 Minutes": "15Min",
+    "30 Minutes": "30Min",
+    "1 Hour": "1Hour",
+    "4 Hours": "4Hour",
+    "1 Day": "1Day"
+}
+
+DATA_LIMITS = {
+    "1Min": 200,
+    "5Min": 300,
+    "15Min": 400,
+    "30Min": 500,
+    "1Hour": 500,
+    "4Hour": 300,
+    "1Day": 200
+}
+
+DEFAULT_TICKERS = [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", 
+    "NVDA", "META", "NFLX", "AMD", "INTC"
+]
+
 def initialize_alpaca_connector():
     """Initialize the Alpaca connector with provided credentials"""
     try:
         logger.info("Initializing Alpaca connector...")
         connector = AlpacaConnector(
-            api_key=API_CONFIG['ALPACA_API_KEY'],
-            secret_key=API_CONFIG['ALPACA_SECRET_KEY'],
+            API_CONFIG['ALPACA_API_KEY'],
+            API_CONFIG['ALPACA_SECRET_KEY'],
             paper=API_CONFIG['PAPER_TRADING'],
-            feed=DataFeed.IEX
+            feed=API_CONFIG['DATA_FEED']
         )
         
         if connector.is_operational:
