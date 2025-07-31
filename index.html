@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚀 Trading Strategy Scanner</title>
+    <title>🚀 Premium Trading Strategy Scanner</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
 </head>
 <body>
@@ -12,8 +13,10 @@
         <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <h1><i class="fas fa-rocket"></i> Trading Strategy Scanner</h1>
-                <p>Real-time market analysis with professional trading strategies</p>
+                <div class="header-left">
+                    <h1><i class="fas fa-rocket"></i> Trading Strategy Scanner</h1>
+                    <p>Real-time market analysis with professional trading strategies</p>
+                </div>
                 <div class="connection-status" id="connectionStatus">
                     <i class="fas fa-circle"></i>
                     <span>Connecting...</span>
@@ -26,55 +29,64 @@
             <!-- Sidebar -->
             <aside class="sidebar">
                 <div class="sidebar-section">
-                    <h3><i class="fas fa-cog"></i> Configuration</h3>
+                    <h3><i class="fas fa-sliders-h"></i> Configuration</h3>
                     
                     <!-- Ticker Selection -->
                     <div class="config-group">
-                        <label>📊 Ticker Selection</label>
+                        <label><i class="fas fa-chart-line"></i> Ticker Selection</label>
                         <div class="radio-group">
                             <label class="radio-label">
                                 <input type="radio" name="tickerSource" value="top" checked>
+                                <i class="fas fa-fire"></i>
                                 <span>Top Volume Stocks</span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="tickerSource" value="custom">
+                                <i class="fas fa-edit"></i>
                                 <span>Custom Tickers</span>
                             </label>
                         </div>
                         
                         <div id="topVolumeControls" class="ticker-controls">
                             <label>Number of stocks:</label>
-                            <input type="range" id="numTickers" min="5" max="20" value="10" class="slider">
-                            <span id="numTickersValue">10</span>
+                            <div class="slider-container">
+                                <input type="range" id="numTickers" min="5" max="20" value="10" class="slider">
+                                <span class="slider-value" id="numTickersValue">10</span>
+                            </div>
                             <button id="loadTopVolume" class="btn btn-secondary">
-                                <i class="fas fa-sync"></i> Load Top Volume
+                                <i class="fas fa-download"></i> Load Top Volume
                             </button>
                         </div>
                         
                         <div id="customTickerControls" class="ticker-controls" style="display: none;">
-                            <textarea id="customTickers" placeholder="Enter tickers (one per line or comma-separated)&#10;AAPL&#10;TSLA&#10;NVDA&#10;MSFT"></textarea>
+                            <textarea id="customTickers" placeholder="Enter tickers (one per line or comma-separated)&#10;AAPL, TSLA, NVDA, MSFT&#10;GOOGL, AMZN, META"></textarea>
                         </div>
                         
                         <div class="selected-tickers" id="selectedTickers">
-                            <small>No tickers selected</small>
+                            <i class="fas fa-info-circle"></i>
+                            <span>No tickers selected</span>
                         </div>
                     </div>
 
                     <!-- Strategy Selection -->
                     <div class="config-group">
-                        <label>🧠 Strategy Selection</label>
+                        <label><i class="fas fa-brain"></i> Strategy Selection</label>
                         <div class="strategy-controls">
-                            <button id="selectAllStrategies" class="btn btn-small">✅ Select All</button>
-                            <button id="clearAllStrategies" class="btn btn-small">❌ Clear All</button>
+                            <button id="selectAllStrategies" class="btn btn-small btn-secondary">
+                                <i class="fas fa-check-double"></i> Select All
+                            </button>
+                            <button id="clearAllStrategies" class="btn btn-small btn-secondary">
+                                <i class="fas fa-times"></i> Clear All
+                            </button>
                         </div>
                         <div id="strategyCategories" class="strategy-categories"></div>
                     </div>
 
                     <!-- Scan Settings -->
                     <div class="config-group">
-                        <label>⚡ Scan Settings</label>
+                        <label><i class="fas fa-cogs"></i> Scan Settings</label>
                         <div class="setting-item">
-                            <label>Timeframe:</label>
+                            <label><i class="fas fa-clock"></i> Timeframe:</label>
                             <select id="timeframe">
                                 <option value="1Min">1 Minute</option>
                                 <option value="5Min" selected>5 Minutes</option>
@@ -85,21 +97,24 @@
                             </select>
                         </div>
                         <div class="setting-item">
-                            <label>Data points:</label>
-                            <input type="range" id="dataLimit" min="50" max="500" value="200" class="slider">
-                            <span id="dataLimitValue">200</span>
+                            <label><i class="fas fa-database"></i> Data points:</label>
+                            <div class="slider-container">
+                                <input type="range" id="dataLimit" min="50" max="500" value="200" class="slider">
+                                <span class="slider-value" id="dataLimitValue">200</span>
+                            </div>
                         </div>
                         <div class="setting-item">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="autoRefresh">
-                                <span>🔄 Auto-refresh (30s)</span>
+                                <i class="fas fa-sync-alt"></i>
+                                <span>Auto-refresh (30s)</span>
                             </label>
                         </div>
                     </div>
 
                     <!-- Scan Button -->
                     <button id="startScan" class="btn btn-primary btn-large">
-                        <i class="fas fa-rocket"></i> Start Scan
+                        <i class="fas fa-search"></i> Start Premium Scan
                     </button>
                 </div>
             </aside>
@@ -108,10 +123,11 @@
             <div class="results-area">
                 <div id="loadingScreen" class="loading-screen" style="display: none;">
                     <div class="loading-spinner"></div>
-                    <div class="loading-text">Scanning markets...</div>
+                    <div class="loading-text">Analyzing Market Data...</div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill"></div>
                     </div>
+                    <div class="loading-subtitle">Please wait while we process your request</div>
                 </div>
 
                 <div id="resultsContainer" class="results-container" style="display: none;">
@@ -124,12 +140,14 @@
 
                 <div id="welcomeScreen" class="welcome-screen">
                     <div class="welcome-content">
-                        <i class="fas fa-chart-line welcome-icon"></i>
-                        <h2>Welcome to Trading Strategy Scanner</h2>
-                        <p>Select your tickers and strategies from the sidebar, then click "Start Scan" to begin analyzing the markets.</p>
+                        <div class="welcome-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h2>Welcome to Premium Trading Scanner</h2>
+                        <p>Advanced market analysis powered by 50+ professional trading strategies. Select your tickers and strategies from the sidebar to begin.</p>
                         <div class="feature-list">
                             <div class="feature-item">
-                                <i class="fas fa-bolt"></i>
+                                <i class="fas fa-lightning-bolt"></i>
                                 <span>Real-time market data</span>
                             </div>
                             <div class="feature-item">
@@ -137,8 +155,20 @@
                                 <span>50+ trading strategies</span>
                             </div>
                             <div class="feature-item">
-                                <i class="fas fa-chart-bar"></i>
+                                <i class="fas fa-chart-candlestick"></i>
                                 <span>Interactive charts</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-robot"></i>
+                                <span>AI-powered analysis</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Professional grade</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span>Mobile responsive</span>
                             </div>
                         </div>
                     </div>
@@ -149,8 +179,13 @@
 
     <!-- Auto-refresh countdown -->
     <div id="refreshCountdown" class="refresh-countdown" style="display: none;">
-        <i class="fas fa-sync fa-spin"></i>
+        <i class="fas fa-sync-alt fa-spin"></i>
         <span>Next refresh in <span id="countdownTimer">30</span>s</span>
+    </div>
+
+    <!-- Floating Action Button for Mobile -->
+    <div class="fab" id="mobileFab" style="display: none;">
+        <i class="fas fa-search"></i>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
