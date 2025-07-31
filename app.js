@@ -7,7 +7,8 @@ let appState = {
     autoRefresh: false,
     refreshTimer: null,
     countdownTimer: null,
-    lastScanTime: null
+    lastScanTime: null,
+    animationQueue: []
 };
 
 // Strategy Categories
@@ -87,6 +88,7 @@ const STRATEGY_CATEGORIES = {
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
+    initializeAnimations();
 });
 
 function initializeApp() {
@@ -94,6 +96,39 @@ function initializeApp() {
     renderStrategyCategories();
     loadDefaultTickers();
     checkConnection();
+    setupMobileOptimizations();
+}
+
+function initializeAnimations() {
+    // Add entrance animations to elements
+    const animatedElements = document.querySelectorAll('.sidebar, .results-area, .header');
+    animatedElements.forEach((el, index) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            el.style.transition = 'all 0.6s ease';
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        }, index * 200);
+    });
+}
+
+function setupMobileOptimizations() {
+    // Show/hide mobile FAB based on screen size
+    function updateMobileView() {
+        const fab = document.getElementById('mobileFab');
+        const startScanBtn = document.getElementById('startScan');
+        
+        if (window.innerWidth <= 768) {
+            fab.style.display = 'flex';
+            fab.onclick = () => startScan();
+        } else {
+            fab.style.display = 'none';
+        }
+    }
+    
+    updateMobileView();
+    window.addEventListener('resize', updateMobileView);
 }
 
 function setupEventListeners() {
@@ -107,6 +142,11 @@ function setupEventListeners() {
     const numTickersValue = document.getElementById('numTickersValue');
     numTickersSlider.addEventListener('input', function() {
         numTickersValue.textContent = this.value;
+        // Add pulse animation to value
+        numTickersValue.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            numTickersValue.style.transform = 'scale(1)';
+        }, 150);
     });
 
     // Data limit slider
@@ -114,6 +154,11 @@ function setupEventListeners() {
     const dataLimitValue = document.getElementById('dataLimitValue');
     dataLimitSlider.addEventListener('input', function() {
         dataLimitValue.textContent = this.value;
+        // Add pulse animation to value
+        dataLimitValue.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            dataLimitValue.style.transform = 'scale(1)';
+        }, 150);
     });
 
     // Load top volume button
@@ -206,6 +251,9 @@ function renderStrategyCategories() {
             strategiesDiv.classList.toggle('expanded');
             const icon = header.querySelector('i');
             icon.className = isExpanded ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+            
+            // Add rotation animation
+            icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
         });
 
         categoryDiv.appendChild(header);
@@ -217,18 +265,39 @@ function renderStrategyCategories() {
 function handleStrategySelection() {
     const selectedCheckboxes = document.querySelectorAll('#strategyCategories input[type="checkbox"]:checked');
     appState.selectedStrategies = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    // Update UI with selection count
+    updateStrategySelectionCount();
+}
+
+function updateStrategySelectionCount() {
+    const count = appState.selectedStrategies.length;
+    const scanButton = document.getElementById('startScan');
+    const icon = scanButton.querySelector('i');
+    
+    if (count > 0) {
+        scanButton.innerHTML = `<i class="fas fa-search"></i> Scan with ${count} Strategies`;
+        scanButton.classList.add('btn-ready');
+    } else {
+        scanButton.innerHTML = `<i class="fas fa-search"></i> Start Premium Scan`;
+        scanButton.classList.remove('btn-ready');
+    }
 }
 
 function selectAllStrategies() {
     const checkboxes = document.querySelectorAll('#strategyCategories input[type="checkbox"]');
     checkboxes.forEach(cb => cb.checked = true);
     appState.selectedStrategies = Array.from(checkboxes).map(cb => cb.value);
+    updateStrategySelectionCount();
+    showNotification(`Selected all ${appState.selectedStrategies.length} strategies`, 'success');
 }
 
 function clearAllStrategies() {
     const checkboxes = document.querySelectorAll('#strategyCategories input[type="checkbox"]');
     checkboxes.forEach(cb => cb.checked = false);
     appState.selectedStrategies = [];
+    updateStrategySelectionCount();
+    showNotification('Cleared all strategy selections', 'info');
 }
 
 async function loadDefaultTickers() {
@@ -244,6 +313,7 @@ async function loadDefaultTickers() {
         
         appState.selectedTickers = defaultTickers.slice(0, parseInt(numTickers));
         updateSelectedTickersDisplay();
+        showNotification(`Loaded ${appState.selectedTickers.length} default tickers`, 'info');
     } catch (error) {
         console.error('Error loading default tickers:', error);
         showNotification('Failed to load top volume tickers', 'error');
@@ -252,7 +322,13 @@ async function loadDefaultTickers() {
 
 async function loadTopVolumeTickers() {
     try {
-        showNotification('Loading top volume tickers...', 'info');
+        const loadButton = document.getElementById('loadTopVolume');
+        const originalText = loadButton.innerHTML;
+        
+        // Show loading state
+        loadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+        loadButton.disabled = true;
+        
         const numTickers = document.getElementById('numTickers').value;
         
         // In a real implementation, this would call your backend API
@@ -268,7 +344,7 @@ async function loadTopVolumeTickers() {
             const data = await response.json();
             appState.selectedTickers = data.tickers || [];
             updateSelectedTickersDisplay();
-            showNotification(`Loaded ${appState.selectedTickers.length} tickers`, 'success');
+            showNotification(`✨ Loaded ${appState.selectedTickers.length} top volume tickers`, 'success');
         } else {
             throw new Error('Failed to fetch top volume tickers');
         }
@@ -276,14 +352,19 @@ async function loadTopVolumeTickers() {
         console.error('Error loading top volume tickers:', error);
         // Fallback to default tickers
         loadDefaultTickers();
-        showNotification('Using default tickers (API unavailable)', 'warning');
+        showNotification('⚠️ Using default tickers (API unavailable)', 'warning');
+    } finally {
+        // Restore button state
+        const loadButton = document.getElementById('loadTopVolume');
+        loadButton.innerHTML = '<i class="fas fa-download"></i> Load Top Volume';
+        loadButton.disabled = false;
     }
 }
 
 function updateSelectedTickersDisplay() {
     const container = document.getElementById('selectedTickers');
     if (appState.selectedTickers.length === 0) {
-        container.innerHTML = '<small>No tickers selected</small>';
+        container.innerHTML = '<i class="fas fa-info-circle"></i><span>No tickers selected</span>';
     } else {
         const displayTickers = appState.selectedTickers.slice(0, 5);
         const remaining = appState.selectedTickers.length - 5;
@@ -291,7 +372,11 @@ function updateSelectedTickersDisplay() {
         if (remaining > 0) {
             text += ` +${remaining} more`;
         }
-        container.innerHTML = `<small><strong>Selected:</strong> ${text}</small>`;
+        container.innerHTML = `<i class="fas fa-check-circle"></i><span><strong>Selected:</strong> ${text}</span>`;
+        
+        // Add success styling
+        container.style.background = 'rgba(16, 185, 129, 0.1)';
+        container.style.borderColor = 'rgba(16, 185, 129, 0.3)';
     }
 }
 
@@ -319,22 +404,25 @@ function updateConnectionStatus(connected, message) {
     if (connected) {
         statusElement.className = 'connection-status connected';
         icon.className = 'fas fa-circle';
-        text.textContent = 'Connected';
+        text.textContent = '✨ Connected';
+        // Add success pulse animation
+        statusElement.style.animation = 'pulse 2s infinite';
     } else {
         statusElement.className = 'connection-status disconnected';
         icon.className = 'fas fa-circle';
-        text.textContent = message || 'Disconnected';
+        text.textContent = message || '❌ Disconnected';
+        statusElement.style.animation = 'none';
     }
 }
 
 async function startScan() {
     if (appState.selectedTickers.length === 0) {
-        showNotification('Please select at least one ticker', 'warning');
+        showNotification('⚠️ Please select at least one ticker', 'warning');
         return;
     }
 
     if (appState.selectedStrategies.length === 0) {
-        showNotification('Please select at least one strategy', 'warning');
+        showNotification('⚠️ Please select at least one strategy', 'warning');
         return;
     }
 
@@ -343,6 +431,12 @@ async function startScan() {
     }
 
     appState.isScanning = true;
+    
+    // Update scan button state
+    const scanButton = document.getElementById('startScan');
+    scanButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+    scanButton.disabled = true;
+    
     showLoadingScreen();
     
     try {
@@ -372,6 +466,8 @@ async function startScan() {
             displayResults(results);
             appState.lastScanTime = Date.now();
             
+            showNotification(`✅ Scan completed! Found ${results.summary?.total_signals || 0} signals`, 'success');
+            
             if (appState.autoRefresh) {
                 startRefreshCountdown();
             }
@@ -380,20 +476,34 @@ async function startScan() {
         }
     } catch (error) {
         console.error('Scan error:', error);
-        showNotification('Scan failed. Please try again.', 'error');
+        showNotification('❌ Scan failed. Please try again.', 'error');
         showWelcomeScreen();
     } finally {
         appState.isScanning = false;
+        
+        // Restore scan button
+        const scanButton = document.getElementById('startScan');
+        updateStrategySelectionCount(); // This will restore the proper button text
+        scanButton.disabled = false;
     }
 }
 
 async function simulateScanProgress() {
     const progressFill = document.getElementById('progressFill');
-    const steps = [20, 40, 60, 80, 100];
+    const loadingText = document.querySelector('.loading-text');
+    const steps = [
+        { progress: 15, text: 'Connecting to market data...' },
+        { progress: 35, text: 'Fetching ticker information...' },
+        { progress: 55, text: 'Running strategy analysis...' },
+        { progress: 75, text: 'Processing signals...' },
+        { progress: 90, text: 'Generating results...' },
+        { progress: 100, text: 'Finalizing scan...' }
+    ];
     
     for (let i = 0; i < steps.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        progressFill.style.width = steps[i] + '%';
+        await new Promise(resolve => setTimeout(resolve, 600));
+        progressFill.style.width = steps[i].progress + '%';
+        loadingText.textContent = steps[i].text;
     }
 }
 
@@ -445,24 +555,40 @@ function displayMetrics(results) {
     
     metricsRow.innerHTML = `
         <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-signal"></i></div>
             <div class="metric-value">${totalSignals}</div>
             <div class="metric-label">Total Signals</div>
         </div>
         <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-arrow-up"></i></div>
             <div class="metric-value">${buySignals}</div>
             <div class="metric-label">Buy Signals</div>
-            <div class="metric-change positive">+${buySignals}</div>
+            ${buySignals > 0 ? '<div class="metric-change positive">+' + buySignals + '</div>' : ''}
         </div>
         <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-arrow-down"></i></div>
             <div class="metric-value">${sellSignals}</div>
             <div class="metric-label">Sell Signals</div>
-            <div class="metric-change negative">${sellSignals > 0 ? '-' : ''}${sellSignals}</div>
+            ${sellSignals > 0 ? '<div class="metric-change negative">-' + sellSignals + '</div>' : ''}
         </div>
         <div class="metric-card">
+            <div class="metric-icon"><i class="fas fa-clock"></i></div>
             <div class="metric-value">${scanTime}</div>
             <div class="metric-label">Last Scan</div>
         </div>
     `;
+    
+    // Animate metric cards
+    const metricCards = document.querySelectorAll('.metric-card');
+    metricCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
 }
 
 function displayResultCards(results) {
@@ -472,10 +598,19 @@ function displayResultCards(results) {
     if (!results.strategy_results || results.strategy_results.length === 0) {
         resultsGrid.innerHTML = `
             <div class="result-card">
+                <div class="no-signals-icon">
+                    <i class="fas fa-search"></i>
+                </div>
                 <div class="result-header">
                     <div class="result-symbol">No Signals Found</div>
                 </div>
-                <p>No trading signals were detected for the selected tickers and strategies. Try adjusting your selection or timeframe.</p>
+                <p>No trading signals were detected for the selected tickers and strategies. Consider:</p>
+                <ul>
+                    <li>Adjusting your timeframe</li>
+                    <li>Selecting different strategies</li>
+                    <li>Trying different tickers</li>
+                    <li>Checking market hours</li>
+                </ul>
             </div>
         `;
         return;
@@ -494,6 +629,17 @@ function displayResultCards(results) {
     Object.entries(groupedResults).forEach(([symbol, symbolResults]) => {
         const resultCard = createResultCard(symbol, symbolResults, results.market_data);
         resultsGrid.appendChild(resultCard);
+        
+        // Add entrance animation
+        setTimeout(() => {
+            resultCard.style.opacity = '0';
+            resultCard.style.transform = 'translateY(20px)';
+            resultCard.style.transition = 'all 0.6s ease';
+            setTimeout(() => {
+                resultCard.style.opacity = '1';
+                resultCard.style.transform = 'translateY(0)';
+            }, 50);
+        }, 100);
     });
 }
 
@@ -518,9 +664,12 @@ function createResultCard(symbol, symbolResults, marketData) {
             <div class="result-symbol">${symbol}</div>
             <div class="result-price">
                 <div class="price-value">$${latestPrice ? latestPrice.close.toFixed(2) : 'N/A'}</div>
-                <div class="price-change ${priceChange >= 0 ? 'positive' : 'negative'}">
-                    ${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} (${priceChangePercent.toFixed(2)}%)
-                </div>
+                ${latestPrice ? `
+                    <div class="price-change ${priceChange >= 0 ? 'positive' : 'negative'}">
+                        <i class="fas fa-${priceChange >= 0 ? 'arrow-up' : 'arrow-down'}"></i>
+                        ${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} (${priceChangePercent.toFixed(2)}%)
+                    </div>
+                ` : ''}
             </div>
         </div>
         <div class="result-content">
@@ -528,19 +677,24 @@ function createResultCard(symbol, symbolResults, marketData) {
                 <canvas id="chart-${symbol}"></canvas>
             </div>
             <div class="signals-panel">
-                <div class="signals-header">🎯 Active Signals</div>
+                <div class="signals-header">
+                    <i class="fas fa-bullseye"></i> Active Signals
+                </div>
                 ${createSignalsHTML(symbolResults)}
                 <div class="market-data">
+                    <div class="market-data-header">
+                        <i class="fas fa-chart-bar"></i> Market Data
+                    </div>
                     <div class="market-data-item">
-                        <span class="market-data-label">Volume:</span>
+                        <span class="market-data-label"><i class="fas fa-volume-up"></i> Volume:</span>
                         <span class="market-data-value">${latestPrice ? latestPrice.volume.toLocaleString() : 'N/A'}</span>
                     </div>
                     <div class="market-data-item">
-                        <span class="market-data-label">High:</span>
+                        <span class="market-data-label"><i class="fas fa-arrow-up"></i> High:</span>
                         <span class="market-data-value">$${latestPrice ? latestPrice.high.toFixed(2) : 'N/A'}</span>
                     </div>
                     <div class="market-data-item">
-                        <span class="market-data-label">Low:</span>
+                        <span class="market-data-label"><i class="fas fa-arrow-down"></i> Low:</span>
                         <span class="market-data-value">$${latestPrice ? latestPrice.low.toFixed(2) : 'N/A'}</span>
                     </div>
                 </div>
@@ -571,23 +725,25 @@ function createSignalsHTML(symbolResults) {
             
             if (signal.includes('Buy')) {
                 signalClass = 'signal-buy';
-                signalText = '🟢 BUY';
+                signalText = '<i class="fas fa-arrow-up"></i> BUY';
             } else if (signal.includes('Sell')) {
                 signalClass = 'signal-sell';
-                signalText = '🔴 SELL';
+                signalText = '<i class="fas fa-arrow-down"></i> SELL';
+            } else {
+                signalText = '<i class="fas fa-minus"></i> ' + signal;
             }
             
             signalsHTML += `
                 <div class="signal-item ${signalClass}">
-                    <div style="font-weight: bold;">${signalText}</div>
-                    <div style="font-size: 0.8em; margin-top: 0.25rem;">${strategy}</div>
+                    <div class="signal-text">${signalText}</div>
+                    <div class="signal-strategy">${strategy}</div>
                 </div>
             `;
         });
     });
     
     if (!signalsHTML) {
-        signalsHTML = '<div class="signal-item signal-none">No signals detected</div>';
+        signalsHTML = '<div class="signal-item signal-none"><i class="fas fa-minus"></i> No signals detected</div>';
     }
     
     return signalsHTML;
@@ -608,11 +764,16 @@ function createChart(symbol, data) {
             datasets: [{
                 label: 'Price',
                 data: prices,
-                borderColor: '#667eea',
-                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderColor: priceChange >= 0 ? '#10b981' : '#ef4444',
+                backgroundColor: priceChange >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: priceChange >= 0 ? '#10b981' : '#ef4444',
+                pointHoverBorderColor: '#ffffff',
+                pointHoverBorderWidth: 2
             }]
         },
         options: {
@@ -621,27 +782,51 @@ function createChart(symbol, data) {
             plugins: {
                 legend: {
                     display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#667eea',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: false
                 }
             },
             scales: {
                 x: {
                     display: true,
                     grid: {
-                        display: false
+                        display: false,
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        maxTicksLimit: 6
                     }
                 },
                 y: {
                     display: true,
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.1)'
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        callback: function(value) {
+                            return '$' + value.toFixed(2);
+                        }
                     }
                 }
             },
             elements: {
                 point: {
                     radius: 0,
-                    hoverRadius: 4
+                    hoverRadius: 6
                 }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
             }
         }
     });
@@ -662,6 +847,11 @@ function startRefreshCountdown() {
         timeLeft--;
         timerElement.textContent = timeLeft;
         
+        // Add pulsing effect when time is running low
+        if (timeLeft <= 10) {
+            countdownElement.style.animation = 'pulse 1s infinite';
+        }
+        
         if (timeLeft <= 0) {
             clearInterval(appState.countdownTimer);
             countdownElement.style.display = 'none';
@@ -680,43 +870,51 @@ function stopRefreshCountdown() {
     document.getElementById('refreshCountdown').style.display = 'none';
 }
 
-function showNotification(message, type = 'info') {
+function showNotification(message, type = 'info', duration = 4000) {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
         <i class="fas fa-${getNotificationIcon(type)}"></i>
         <span>${message}</span>
+        <button class="notification-close" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
     `;
     
     // Add styles
     notification.style.cssText = `
         position: fixed;
-        top: 2rem;
+        top: 1rem;
         right: 2rem;
-        background: white;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
         padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         border-left: 4px solid ${getNotificationColor(type)};
         display: flex;
         align-items: center;
         gap: 0.5rem;
         z-index: 1000;
-        animation: slideIn 0.3s ease;
+        animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        max-width: 400px;
+        min-width: 300px;
     `;
     
     document.body.appendChild(notification);
     
-    // Remove after 3 seconds
+    // Auto remove
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOutRight 0.3s ease';
+        }
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
             }
         }, 300);
-    }, 3000);
+    }, duration);
 }
 
 function getNotificationIcon(type) {
@@ -740,7 +938,117 @@ function getNotificationColor(type) {
 // Add CSS animations
 const style = document.createElement('style');
 style.textContent = `
-    @keyframes slideIn {
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin: 0.5rem 0;
+    }
+    
+    .slider-value {
+        background: rgba(102, 126, 234, 0.2);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        min-width: 40px;
+        text-align: center;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-ready {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important;
+    }
+    
+    .btn-ready:hover {
+        box-shadow: 0 12px 35px rgba(16, 185, 129, 0.6) !important;
+    }
+    
+    .loading-subtitle {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 1rem;
+        margin-top: 1rem;
+        text-align: center;
+    }
+    
+    .metric-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .signal-text {
+        font-weight: bold;
+        font-size: 1rem;
+    }
+    
+    .signal-strategy {
+        font-size: 0.8em;
+        margin-top: 0.25rem;
+        opacity: 0.8;
+    }
+    
+    .market-data-header {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .no-signals-icon {
+        text-align: center;
+        font-size: 3rem;
+        color: rgba(255, 255, 255, 0.5);
+        margin-bottom: 1rem;
+    }
+    
+    .fab {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 1000;
+    }
+    
+    .fab:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
+    }
+    
+    .notification-close {
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 0.25rem;
+        margin-left: auto;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+    }
+    
+    .notification-close:hover {
+        opacity: 1;
+    }
+    
+    @keyframes slideInRight {
         from {
             transform: translateX(100%);
             opacity: 0;
@@ -751,7 +1059,7 @@ style.textContent = `
         }
     }
     
-    @keyframes slideOut {
+    @keyframes slideOutRight {
         from {
             transform: translateX(0);
             opacity: 1;
@@ -759,6 +1067,21 @@ style.textContent = `
         to {
             transform: translateX(100%);
             opacity: 0;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .notification {
+            top: 1rem !important;
+            right: 1rem !important;
+            left: 1rem !important;
+            max-width: none !important;
+            min-width: auto !important;
+        }
+        
+        .fab {
+            bottom: 1rem;
+            right: 1rem;
         }
     }
 `;
