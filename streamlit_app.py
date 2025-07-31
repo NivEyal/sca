@@ -19,7 +19,7 @@ try:
     from alpaca_connector import AlpacaConnector, DataFeed
     from strategy import run_strategies, STRATEGY_MAP
     from top_volume import get_top_volume_tickers
-    from asyncio_runner import get_asyncio_runner
+    from config import STRATEGY_CATEGORIES, TIMEFRAMES, DATA_LIMITS, DEFAULT_TICKERS
 except ImportError as e:
     st.error(f"Import error: {e}")
     st.stop()
@@ -115,7 +115,15 @@ st.markdown("""
 # Initialize session state
 def init_session_state():
     if 'alpaca_connector' not in st.session_state:
-        st.session_state.alpaca_connector = None
+        # Initialize connector with your API keys
+        try:
+            st.session_state.alpaca_connector = AlpacaConnector(
+                paper=False,  # Using live account
+                feed=DataFeed.IEX
+            )
+        except Exception as e:
+            st.session_state.alpaca_connector = None
+            logger.error(f"Failed to initialize Alpaca connector: {e}")
     if 'market_data' not in st.session_state:
         st.session_state.market_data = {}
     if 'strategy_results' not in st.session_state:
@@ -123,7 +131,7 @@ def init_session_state():
     if 'last_scan_time' not in st.session_state:
         st.session_state.last_scan_time = None
     if 'selected_tickers' not in st.session_state:
-        st.session_state.selected_tickers = []
+        st.session_state.selected_tickers = DEFAULT_TICKERS[:5]  # Start with 5 default tickers
     if 'auto_refresh' not in st.session_state:
         st.session_state.auto_refresh = False
 
@@ -151,7 +159,7 @@ with st.sidebar:
             with st.spinner("Connecting to Alpaca..."):
                 try:
                     st.session_state.alpaca_connector = AlpacaConnector(
-                        paper=True,
+                        paper=False,  # Using live account with your credentials
                         feed=DataFeed.IEX
                     )
                     if st.session_state.alpaca_connector.is_operational:
@@ -176,7 +184,7 @@ with st.sidebar:
         if st.button("🔄 Load Top Volume"):
             with st.spinner("Loading top volume stocks..."):
                 tickers = get_top_volume_tickers(limit=num_tickers)
-                st.session_state.selected_tickers = tickers
+                st.session_state.selected_tickers = tickers if tickers else DEFAULT_TICKERS[:num_tickers]
                 st.success(f"Loaded {len(tickers)} tickers")
     else:
         custom_input = st.text_area(
@@ -203,47 +211,19 @@ with st.sidebar:
     # Strategy Selection
     st.subheader("🧠 Strategy Selection")
     
-    strategy_categories = {
-        "🎯 Momentum": [
-            "Momentum Trading",
-            "MACD Bullish ADX", 
-            "ADX Rising MFI Surge"
-        ],
-        "📈 Trend Following": [
-            "Trend Following (EMA/ADX)",
-            "Golden Cross RSI",
-            "SuperTrend RSI Pullback"
-        ],
-        "🔄 Mean Reversion": [
-            "Mean Reversion (RSI)",
-            "Scalping (Bollinger Bands)",
-            "MACD RSI Oversold"
-        ],
-        "💥 Breakout": [
-            "Breakout Trading",
-            "Opening Range Breakout",
-            "Gap and Go"
-        ],
-        "📊 Volume Based": [
-            "VWAP RSI",
-            "News Trading (Volatility Spike)",
-            "TEMA Cross Volume"
-        ]
-    }
-    
     selected_strategies = []
     
     # Quick select buttons
     col1, col2 = st.columns(2)
     with col1:
         if st.button("✅ Select All"):
-            selected_strategies = [strategy for strategies in strategy_categories.values() for strategy in strategies]
+            selected_strategies = [strategy for strategies in STRATEGY_CATEGORIES.values() for strategy in strategies]
     with col2:
         if st.button("❌ Clear All"):
             selected_strategies = []
     
     # Category selection
-    for category, strategies in strategy_categories.items():
+    for category, strategies in STRATEGY_CATEGORIES.items():
         with st.expander(category, expanded=False):
             for strategy in strategies:
                 if st.checkbox(strategy, key=f"strat_{strategy}"):
@@ -257,13 +237,15 @@ with st.sidebar:
     # Scan Settings
     st.subheader("⚡ Scan Settings")
     
-    timeframe = st.selectbox(
+    timeframe_display = st.selectbox(
         "Timeframe:",
-        ["1Min", "5Min", "15Min", "1Hour", "1Day"],
+        list(TIMEFRAMES.keys()),
         index=1
     )
     
-    data_limit = st.slider("Data points:", 50, 500, 200)
+    timeframe = TIMEFRAMES[timeframe_display]
+    default_limit = DATA_LIMITS.get(timeframe, 200)
+    data_limit = st.slider("Data points:", 50, 500, default_limit)
     
     auto_refresh = st.checkbox("🔄 Auto-refresh (30s)", value=st.session_state.auto_refresh)
     st.session_state.auto_refresh = auto_refresh
