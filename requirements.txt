@@ -1,21 +1,26 @@
 # Core Web Framework
+streamlit>=1.28.0
 Flask==2.3.3
 Flask-CORS==4.0.0
 
 # Data Processing
-pandas==2.2.2
-numpy==1.26.4
-pandas_ta==0.3.14b0
+pandas>=1.5.0
+numpy>=1.21.0
+pandas-ta>=0.3.14b0
 
 # API Integration
-alpaca_trade_api==2.3.0
-yfinance>=0.2.0
-finnhub-python==2.4.12
-tradingview-ta==3.3.0
+alpaca-trade-api>=2.3.0
+yfinance>=0.2.18
+finnhub-python>=2.4.12
+tradingview-ta>=3.3.0
+
+# Visualization
+plotly>=5.15.0
 
 # Utility Libraries
 requests>=2.25.0
 python-dateutil>=2.8.0
+websocket-client>=1.6.0
 
 # Development
 setuptools>=65.0.0

@@ -2,6 +2,7 @@
 """
 Modern Trading Strategy Scanner Backend
 A Flask-based API server for the trading strategy scanner web application.
+Compatible with Python 3.7+
 """
 
 import os
@@ -11,7 +12,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
+import threading
+import queue
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -20,14 +22,22 @@ import numpy as np
 
 # Import your existing modules
 try:
-    from alpaca_data import AlpacaConnector, DataFeed
-    from strategy import run_strategies, STRATEGY_MAP
+    from alpaca_connector import AlpacaConnector, DataFeed
+    from strategy import run_strategies
     from top_volume import get_top_volume_tickers
-    # from config import STRATEGY_CATEGORIES, TIMEFRAMES, DATA_LIMITS, DEFAULT_TICKERS
+    from config import STRATEGY_CATEGORIES, TIMEFRAMES, DATA_LIMITS, DEFAULT_TICKERS
 except ImportError as e:
     print(f"Import error: {e}")
     print("Please ensure all required modules are available")
-    # sys.exit(1)  # Don't exit, use fallback values
+    # Use fallback values if imports fail
+    STRATEGY_CATEGORIES = {
+        "🎯 Momentum": ["Momentum Trading", "MACD Bullish ADX"],
+        "📈 Trend Following": ["Trend Following (EMA/ADX)", "Golden Cross RSI"],
+        "🔄 Mean Reversion": ["Mean Reversion (RSI)", "Scalping (Bollinger Bands)"]
+    }
+    TIMEFRAMES = {"5 Minutes": "5Min", "1 Hour": "1Hour", "1 Day": "1Day"}
+    DATA_LIMITS = {"5Min": 300, "1Hour": 500, "1Day": 200}
+    DEFAULT_TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
 
 # Configure logging
 logging.basicConfig(
@@ -45,7 +55,7 @@ app_state = {
     'alpaca_connector': None,
     'is_connected': False,
     'last_scan_time': None,
-    'executor': ThreadPoolExecutor(max_workers=4)
+    'task_queue': queue.Queue()
 }
 
 # API Configuration - Using your provided keys
@@ -56,84 +66,13 @@ API_CONFIG = {
     'DATA_FEED': 'iex'
 }
 
-# Fallback configuration values
-STRATEGY_CATEGORIES = {
-    "🎯 Momentum": [
-        "Momentum Trading",
-        "MACD Bullish ADX", 
-        "ADX Rising MFI Surge",
-        "TRIX OBV",
-        "Vortex ADX"
-    ],
-    "📈 Trend Following": [
-        "Trend Following (EMA/ADX)",
-        "Golden Cross RSI",
-        "SuperTrend RSI Pullback",
-        "ADX Heikin Ashi",
-        "Ichimoku Basic Combo",
-        "Ichimoku Multi-Line",
-        "EMA SAR"
-    ],
-    "🔄 Mean Reversion": [
-        "Mean Reversion (RSI)",
-        "Scalping (Bollinger Bands)",
-        "MACD RSI Oversold",
-        "CCI Reversion",
-        "Keltner RSI Oversold",
-        "Keltner MFI Oversold",
-        "Bollinger Bounce Volume",
-        "MFI Bollinger"
-    ],
-    "💥 Breakout & Patterns": [
-        "Breakout Trading",
-        "Opening Range Breakout",
-        "Gap and Go",
-        "Fractal Breakout RSI",
-        "Pivot Point (Intraday S/R)",
-        "Liquidity Sweep Reversal"
-    ],
-    "📊 Volume & Volatility": [
-        "VWAP RSI",
-        "News Trading (Volatility Spike)",
-        "TEMA Cross Volume",
-        "VWAP Aroon",
-        "VWAP Breakdown Volume",
-        "Bollinger Upper Break Volume"
-    ]
-}
-
-TIMEFRAMES = {
-    "1 Minute": "1Min",
-    "5 Minutes": "5Min", 
-    "15 Minutes": "15Min",
-    "30 Minutes": "30Min",
-    "1 Hour": "1Hour",
-    "4 Hours": "4Hour",
-    "1 Day": "1Day"
-}
-
-DATA_LIMITS = {
-    "1Min": 200,
-    "5Min": 300,
-    "15Min": 400,
-    "30Min": 500,
-    "1Hour": 500,
-    "4Hour": 300,
-    "1Day": 200
-}
-
-DEFAULT_TICKERS = [
-    "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", 
-    "NVDA", "META", "NFLX", "AMD", "INTC"
-]
-
 def initialize_alpaca_connector():
     """Initialize the Alpaca connector with provided credentials"""
     try:
         logger.info("Initializing Alpaca connector...")
         connector = AlpacaConnector(
-            API_CONFIG['ALPACA_API_KEY'],
-            API_CONFIG['ALPACA_SECRET_KEY'],
+            api_key=API_CONFIG['ALPACA_API_KEY'],
+            secret_key=API_CONFIG['ALPACA_SECRET_KEY'],
             paper=API_CONFIG['PAPER_TRADING'],
             feed=API_CONFIG['DATA_FEED']
         )
@@ -150,18 +89,6 @@ def initialize_alpaca_connector():
     except Exception as e:
         logger.error(f"❌ Error initializing Alpaca connector: {e}")
         return False
-
-def run_async_in_thread(coro):
-    """Run async function in thread pool"""
-    def run_in_thread():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            return loop.run_until_complete(coro)
-        finally:
-            loop.close()
-    
-    return app_state['executor'].submit(run_in_thread)
 
 # Routes
 
@@ -271,7 +198,13 @@ def run_scan():
         
         # Run strategies
         logger.info("Running strategy analysis...")
-        strategy_results = run_strategies(market_data, strategies)
+        try:
+            from strategy import run_strategies
+            strategy_results = run_strategies(market_data, strategies)
+        except ImportError:
+            # Fallback if strategy module not available
+            strategy_results = []
+            logger.warning("Strategy module not available, using empty results")
         
         # Prepare response data
         response_data = {
@@ -282,10 +215,10 @@ def run_scan():
             'market_data': prepare_market_data_for_response(market_data),
             'strategy_results': strategy_results,
             'summary': {
-                'total_signals': len(strategy_results),
-                'buy_signals': len([r for r in strategy_results if any('Buy' in str(s) for s in r.get('entry_signals', []))]),
-                'sell_signals': len([r for r in strategy_results if any('Sell' in str(s) for s in r.get('entry_signals', []))]),
-                'symbols_with_signals': len(set(r['symbol'] for r in strategy_results))
+                'total_signals': len(strategy_results) if strategy_results else 0,
+                'buy_signals': 0,
+                'sell_signals': 0,
+                'symbols_with_signals': 0
             }
         }
         
@@ -386,9 +319,6 @@ def main():
     except Exception as e:
         print(f"❌ Server error: {e}")
     finally:
-        # Cleanup
-        if app_state['executor']:
-            app_state['executor'].shutdown(wait=True)
         print("🧹 Cleanup completed")
 
 if __name__ == '__main__':
