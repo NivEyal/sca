@@ -1,12 +1,4 @@
 import streamlit as st
-st.set_page_config(layout="wide", page_title="📈 Niv Advanced Stock Scanner")
-st.title("📈 Alpaca Advanced Stock Scanner")
-st.markdown("""
-This scanner identifies stocks with unusual trading volume, price movements, and other technical signals.
-**This is not financial advice. Do your own research.**
-Scanning a very large number of tickers will take a significant amount of time.
-""")
-
 from strategy import run_strategies  # This uses strategy.py which calls all strategy functions
 import alpaca_trade_api as tradeapi
 import pandas as pd
@@ -1465,3 +1457,4 @@ if st.sidebar.button("🔄 Refresh Page & Clear State", key="refresh_page_clear_
         if key not in keys_to_keep:
             del st.session_state[key]
     st.rerun()
+
