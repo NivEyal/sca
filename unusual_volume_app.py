@@ -1,5 +1,5 @@
 import streamlit as st
-from modules.strategy import run_strategies
+from strategy import run_strategies
 import alpaca_trade_api as tradeapi
 import pandas as pd
 from datetime import datetime, timedelta
@@ -1457,5 +1457,6 @@ if st.sidebar.button("🔄 Refresh Page & Clear State", key="refresh_page_clear_
         if key not in keys_to_keep:
             del st.session_state[key]
     st.rerun()
+
 
 
